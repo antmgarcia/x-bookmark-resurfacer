@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Welcome to X Bookmark Resurfacer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f1419;
+      background: linear-gradient(135deg, #ffffff 0%, #e8f4fc 50%, #d4ecfb 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(22, 105, 162, 0.12);
+      max-width: 480px;
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .welcome-flag {
+      position: absolute;
+      top: 18px;
+      left: 0;
+      background: #FAD51A;
+      color: #0f1419;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      padding: 6px 14px 6px 12px;
+      border-radius: 0 4px 4px 0;
+    }
+
+    .header {
+      background: linear-gradient(180deg, #ffffff 0%, #f0f8ff 100%);
+      padding: 40px 32px 32px;
+      text-align: center;
+    }
+
+    .header-icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 16px;
+    }
+
+    .header-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .header-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #0f1419;
+      margin-bottom: 8px;
+    }
+
+    .header-subtitle {
+      font-size: 16px;
+      color: #536471;
+      line-height: 1.4;
+    }
+
+    .content {
+      padding: 32px;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .step:last-child {
+      margin-bottom: 0;
+    }
+
+    .step-number {
+      width: 32px;
+      height: 32px;
+      background: #1d9bf0;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #0f1419;
+      margin-bottom: 4px;
+    }
+
+    .step-description {
+      font-size: 14px;
+      color: #536471;
+      line-height: 1.5;
+    }
+
+    .pin-instructions {
+      background: linear-gradient(135deg, #f7f9fa 0%, #e8f4fc 100%);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 8px;
+    }
+
+    .pin-instructions p {
+      font-size: 13px;
+      color: #536471;
+      margin-bottom: 8px;
+    }
+
+    .pin-instructions ol {
+      font-size: 13px;
+      color: #0f1419;
+      padding-left: 20px;
+      line-height: 1.6;
+    }
+
+    .pin-icon {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+      margin: 0 2px;
+    }
+
+    .action-section {
+      padding: 24px 32px 32px;
+      text-align: center;
+      border-top: 1px solid #eff3f4;
+    }
+
+    .action-button {
+      display: inline-block;
+      background: #1d9bf0;
+      color: white;
+      padding: 14px 32px;
+      border-radius: 24px;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 600;
+      transition: background-color 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .action-button:hover {
+      background: #1a8cd8;
+    }
+
+    .footer {
+      padding: 16px 32px;
+      text-align: center;
+      font-size: 13px;
+      color: #536471;
+      border-top: 1px solid #eff3f4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="welcome-flag">WELCOME</div>
+    <div class="header">
+      <div class="header-icon">
+        <img src="../icons/icon128.png" alt="X Bookmark Resurfacer">
+      </div>
+      <div class="header-title">X Bookmark Resurfacer</div>
+      <div class="header-subtitle">Resurface saved posts in your X Feed</div>
+    </div>
+
+    <div class="content">
+      <div class="step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <div class="step-title">Pin the extension</div>
+          <div class="step-description">Keep easy access to your bookmark stats.</div>
+          <div class="pin-instructions">
+            <ol>
+              <li>Click the puzzle icon <svg class="pin-icon" viewBox="0 0 24 24" fill="#536471"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7s2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg> in your toolbar</li>
+              <li>Find "X Bookmark Resurfacer"</li>
+              <li>Click the pin icon <svg class="pin-icon" viewBox="0 0 24 24" fill="#536471"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg> to keep it visible</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <div class="step-title">Sync your bookmarks</div>
+          <div class="step-description">Visit your X bookmarks page once to sync them with the extension.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <div class="step-title">Browse your feed</div>
+          <div class="step-description">Your bookmarked posts will naturally appear in your timeline as gentle reminders.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-section">
+      <a href="https://x.com/i/bookmarks" class="action-button">
+        Go to Bookmarks
+      </a>
+    </div>
+
+    <div class="footer">
+      X Bookmark Resurfacer &middot; v1.0.0
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,95 @@
+/**
+ * X Bookmark Resurfacer - Resurfaced Post Styles
+ * Visual indicators for resurfaced bookmarks
+ */
+
+/* Blue bar + Gradient background */
+.bookmark-resurfaced {
+  position: relative;
+  border-left: 3px solid #1d9bf0 !important;
+  background: linear-gradient(90deg, rgba(29, 155, 240, 0.02) 0%, transparent 40%) !important;
+}
+
+.bookmark-resurfaced:hover {
+  background: linear-gradient(90deg, rgba(29, 155, 240, 0.04) 0%, transparent 40%) !important;
+}
+
+/* "Resurfaced" chip badge */
+.bookmark-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  margin-left: 8px;
+  background: rgba(29, 155, 240, 0.1);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1d9bf0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 16px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  user-select: none;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .bookmark-resurfaced {
+    border-left-color: #1d9bf0 !important;
+    background: linear-gradient(90deg, rgba(29, 155, 240, 0.04) 0%, transparent 40%) !important;
+  }
+
+  .bookmark-resurfaced:hover {
+    background: linear-gradient(90deg, rgba(29, 155, 240, 0.06) 0%, transparent 40%) !important;
+  }
+
+  .bookmark-indicator {
+    background: rgba(29, 155, 240, 0.2);
+    color: #8ecdf8;
+  }
+}
+
+/* X theme attribute support */
+[data-color-mode="dark"] .bookmark-resurfaced,
+[data-theme="dark"] .bookmark-resurfaced,
+html[style*="color-scheme: dark"] .bookmark-resurfaced {
+  border-left-color: #1d9bf0 !important;
+  background: linear-gradient(90deg, rgba(29, 155, 240, 0.04) 0%, transparent 40%) !important;
+}
+
+[data-color-mode="dark"] .bookmark-resurfaced:hover,
+[data-theme="dark"] .bookmark-resurfaced:hover,
+html[style*="color-scheme: dark"] .bookmark-resurfaced:hover {
+  background: linear-gradient(90deg, rgba(29, 155, 240, 0.06) 0%, transparent 40%) !important;
+}
+
+[data-color-mode="dark"] .bookmark-indicator,
+[data-theme="dark"] .bookmark-indicator,
+html[style*="color-scheme: dark"] .bookmark-indicator {
+  background: rgba(29, 155, 240, 0.2);
+  color: #8ecdf8;
+}
+
+/* Entrance animation */
+@keyframes resurfaceSlideIn {
+  from {
+    opacity: 0.5;
+    border-left-width: 0;
+  }
+  to {
+    opacity: 1;
+    border-left-width: 3px;
+  }
+}
+
+.bookmark-resurfaced {
+  animation: resurfaceSlideIn 0.3s ease-out;
+}
+
+/* Ensure chip doesn't break layout */
+.bookmark-indicator {
+  position: relative;
+  z-index: 1;
+}
