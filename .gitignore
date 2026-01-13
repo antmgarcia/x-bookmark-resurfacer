@@ -12,5 +12,5 @@
 # Build artifacts
 *.zip
 
-# Chrome Web Store assets (optional - uncomment to exclude)
-# assets/
+# Chrome Web Store assets
+assets/
