@@ -3,7 +3,7 @@
  * Main orchestration script for the extension
  */
 
-log('Content script loading v1.0.0');
+log('Content script loading v1.1.0');
 log('Page URL:', window.location.href);
 
 class BookmarkResurfacerContent {
@@ -16,6 +16,7 @@ class BookmarkResurfacerContent {
     this.maxResurfacesPerSession = 5;
     this.lastResurfaceTime = 0;
     this.minTimeBetweenResurfacesMs = 3 * 60 * 1000; // 3 minutes minimum between resurfaced posts
+    this.urlCheckInterval = null; // Store interval ID for cleanup
     this.init();
   }
 
@@ -123,7 +124,7 @@ class BookmarkResurfacerContent {
       }
 
       const fetcher = new BookmarkFetcher();
-      const bookmarks = await fetcher.fetchBookmarks(20);
+      const bookmarks = await fetcher.fetchBookmarks(50);
 
       if (bookmarks.length > 0) {
         log(`Auto-fetched ${bookmarks.length} bookmarks`);
@@ -236,7 +237,8 @@ class BookmarkResurfacerContent {
       case MESSAGE_TYPES.INJECT_BOOKMARKS:
         log(`Received ${message.bookmarks?.length || 0} bookmarks to inject`);
         log(`Session: ${this.sessionResurfaceCount}/${this.maxResurfacesPerSession}`);
-        this.injectBookmarksIntoFeed(message.bookmarks);
+        log(`Force replace: ${message.forceReplace || false}`);
+        this.injectBookmarksIntoFeed(message.bookmarks, message.forceReplace || false);
         sendResponse({ success: true });
         break;
 
@@ -279,7 +281,7 @@ class BookmarkResurfacerContent {
   setupPersistenceObserver(timeline) {
     // Listen for URL changes (SPA navigation) - just reset counters, don't re-inject
     let lastUrl = window.location.href;
-    setInterval(() => {
+    this.urlCheckInterval = setInterval(() => {
       if (window.location.href !== lastUrl) {
         lastUrl = window.location.href;
         log('URL changed, removing resurfaced posts and resetting session');
@@ -342,8 +344,10 @@ class BookmarkResurfacerContent {
 
   /**
    * Inject bookmarks into feed
+   * @param {Array} bookmarks - Bookmarks to inject
+   * @param {boolean} forceReplace - If true, replace existing resurfaced post and skip cooldown
    */
-  async injectBookmarksIntoFeed(bookmarks) {
+  async injectBookmarksIntoFeed(bookmarks, forceReplace = false) {
     if (!bookmarks || bookmarks.length === 0) {
       log('No bookmarks to inject');
       return;
@@ -352,16 +356,25 @@ class BookmarkResurfacerContent {
     // Check if there's already a resurfaced post visible
     const existingResurfaced = document.querySelectorAll('[data-resurfaced-cell]');
     if (existingResurfaced.length > 0) {
-      log('Resurfaced post already visible, skipping');
-      return;
+      if (forceReplace) {
+        // Remove existing resurfaced posts when force replacing
+        log('Force replacing existing resurfaced post(s)');
+        existingResurfaced.forEach(el => el.remove());
+      } else {
+        log('Resurfaced post already visible, skipping');
+        return;
+      }
     }
 
     // Check minimum time between resurfaces (prevents being annoying)
-    const timeSinceLastResurface = Date.now() - this.lastResurfaceTime;
-    if (this.lastResurfaceTime > 0 && timeSinceLastResurface < this.minTimeBetweenResurfacesMs) {
-      const waitMinutes = ((this.minTimeBetweenResurfacesMs - timeSinceLastResurface) / 60000).toFixed(1);
-      log(`Too soon since last resurface, wait ${waitMinutes} more minutes`);
-      return;
+    // Skip this check if forceReplace is true (user explicitly requested)
+    if (!forceReplace) {
+      const timeSinceLastResurface = Date.now() - this.lastResurfaceTime;
+      if (this.lastResurfaceTime > 0 && timeSinceLastResurface < this.minTimeBetweenResurfacesMs) {
+        const waitMinutes = ((this.minTimeBetweenResurfacesMs - timeSinceLastResurface) / 60000).toFixed(1);
+        log(`Too soon since last resurface, wait ${waitMinutes} more minutes`);
+        return;
+      }
     }
 
     // Check session cap
@@ -405,7 +418,7 @@ class BookmarkResurfacerContent {
           chrome.runtime.sendMessage({
             type: MESSAGE_TYPES.UPDATE_RESURFACE_STATS,
             bookmarkId: bookmark.id
-          });
+          }).catch(err => logError('Failed to update resurface stats:', err));
 
           const { totalResurfaced = 0 } = await chrome.storage.local.get(['totalResurfaced']);
           await chrome.storage.local.set({ totalResurfaced: totalResurfaced + 1 });
@@ -425,18 +438,5 @@ class BookmarkResurfacerContent {
 
 // Initialize
 const bookmarkResurfacer = new BookmarkResurfacerContent();
-
-// Expose cleanup function to window for debugging
-window.cleanupResurfaced = function() {
-  let count = 0;
-  // Remove wrappers (which contain the cells)
-  const wrappers = document.querySelectorAll('[data-resurfaced-wrapper]');
-  wrappers.forEach(el => { el.remove(); count++; });
-  // Remove any orphaned cells
-  const cells = document.querySelectorAll('[data-resurfaced-cell]');
-  cells.forEach(el => { el.remove(); count++; });
-  console.log(`[X Bookmark Resurfacer] Removed ${count} resurfaced element(s)`);
-  return count;
-};
 
 log('Extension ready');

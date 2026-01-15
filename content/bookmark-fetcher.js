@@ -28,7 +28,8 @@ class BookmarkFetcher {
         return true;
       }
       return false;
-    } catch {
+    } catch (error) {
+      logError('Error extracting CSRF token:', error);
       return false;
     }
   }
@@ -47,7 +48,8 @@ class BookmarkFetcher {
         }
       }
       return null;
-    } catch {
+    } catch (error) {
+      logError('Error getting cached query ID:', error);
       return null;
     }
   }
@@ -61,8 +63,8 @@ class BookmarkFetcher {
         bookmarksQueryId: queryId,
         queryIdTimestamp: Date.now()
       });
-    } catch {
-      // Ignore storage errors
+    } catch (error) {
+      logError('Error caching query ID:', error);
     }
   }
 
@@ -133,7 +135,8 @@ class BookmarkFetcher {
         return !!data?.data?.bookmark_timeline_v2;
       }
       return false;
-    } catch {
+    } catch (error) {
+      logError('Error testing query ID:', error);
       return false;
     }
   }
@@ -278,8 +281,8 @@ window.addEventListener('message', async (event) => {
           bookmarksQueryId: queryId,
           queryIdTimestamp: Date.now()
         });
-      } catch {
-        // Ignore
+      } catch (error) {
+        logError('Error saving discovered query ID:', error);
       }
     }
   }

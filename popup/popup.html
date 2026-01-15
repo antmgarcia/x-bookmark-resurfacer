@@ -17,13 +17,46 @@
       background: #ffffff;
     }
 
+    /* Header with settings gear */
+    .header {
+      display: flex;
+      justify-content: flex-end;
+      padding: 12px 16px 0;
+    }
+
+    .settings-gear {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .settings-gear:hover {
+      background: #eff3f4;
+    }
+
+    .settings-gear svg {
+      width: 20px;
+      height: 20px;
+      fill: #536471;
+    }
+
     /* Content */
     .content {
-      padding: 28px 24px 32px;
+      padding: 16px 24px 32px;
       text-align: center;
     }
 
     /* Setup Screen */
+    #setupScreen {
+      padding-top: 32px;
+    }
+
     .setup-icon {
       font-size: 48px;
       margin-bottom: 16px;
@@ -41,7 +74,7 @@
       font-size: 14px;
       color: #536471;
       line-height: 1.5;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .setup-button {
@@ -63,6 +96,10 @@
     }
 
     /* Success Screen */
+    #successScreen {
+      padding-top: 4px;
+    }
+
     .success-icon {
       font-size: 48px;
       margin-bottom: 16px;
@@ -79,18 +116,167 @@
       font-size: 14px;
       color: #536471;
       line-height: 1.5;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
-    .success-stat-value {
-      font-size: 28px;
-      font-weight: 700;
+    .success-message span {
+      font-weight: 600;
       color: #1d9bf0;
     }
 
-    .success-stat-label {
+    /* Resurface Now Button */
+    .resurface-button {
+      display: inline-block;
+      background: #1d9bf0;
+      color: white;
+      padding: 12px 28px;
+      border-radius: 24px;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background-color 0.2s, opacity 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .resurface-button:hover:not(:disabled) {
+      background: #1a8cd8;
+    }
+
+    .resurface-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Bookmark count (below button) */
+    .bookmark-count {
+      margin-top: 16px;
       font-size: 12px;
       color: #536471;
+    }
+
+    .bookmark-count-value {
+      font-weight: 600;
+      color: #0f1419;
+    }
+
+    /* Empty State Screen */
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .empty-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f1419;
+      margin-bottom: 8px;
+    }
+
+    .empty-message {
+      font-size: 14px;
+      color: #536471;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .open-x-button {
+      display: inline-block;
+      background: #0f1419;
+      color: white;
+      padding: 12px 28px;
+      border-radius: 24px;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background-color 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .open-x-button:hover {
+      background: #272c30;
+    }
+
+    /* Settings Screen */
+    .settings-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f1419;
+      margin-bottom: 24px;
+    }
+
+    .settings-back {
+      position: absolute;
+      left: 16px;
+      top: 12px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .settings-back:hover {
+      background: #eff3f4;
+    }
+
+    .settings-back svg {
+      width: 20px;
+      height: 20px;
+      fill: #536471;
+    }
+
+    .setting-group {
+      text-align: center;
+      margin-bottom: 24px;
+      padding-top: 16px;
+    }
+
+    .setting-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #0f1419;
+      margin-bottom: 20px;
+    }
+
+    .interval-presets {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+
+    .interval-preset {
+      padding: 10px 16px;
+      border: 2px solid #eff3f4;
+      border-radius: 20px;
+      background: white;
+      font-size: 14px;
+      font-weight: 500;
+      color: #536471;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .interval-preset:hover {
+      border-color: #1d9bf0;
+      color: #1d9bf0;
+    }
+
+    .interval-preset.active {
+      border-color: #1d9bf0;
+      background: #1d9bf0;
+      color: white;
+    }
+
+    .setting-note {
+      font-size: 12px;
+      color: #536471;
+      margin-top: 20px;
     }
 
     /* Footer */
@@ -112,9 +298,22 @@
     .hidden {
       display: none !important;
     }
+
+    .relative {
+      position: relative;
+    }
   </style>
 </head>
 <body>
+  <!-- Header with Settings Gear -->
+  <div class="header" id="mainHeader">
+    <button class="settings-gear" id="settingsBtn" title="Settings">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-1l2.11-1.63c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.31-.61-.22l-2.49 1c-.52-.39-1.06-.73-1.69-.98l-.37-2.65A.506.506 0 0 0 14 2h-4c-.25 0-.46.18-.5.42l-.37 2.65c-.63.25-1.17.59-1.69.98l-2.49-1c-.22-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64L4.57 11c-.04.34-.07.67-.07 1s.03.65.07.97l-2.11 1.66c-.19.15-.25.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.06.74 1.69.99l.37 2.65c.04.24.25.42.5.42h4c.25 0 .46-.18.5-.42l.37-2.65c.63-.26 1.17-.59 1.69-.99l2.49 1.01c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.66z"/>
+      </svg>
+    </button>
+  </div>
+
   <!-- Setup Screen -->
   <div class="content" id="setupScreen">
     <div class="setup-icon">🔖</div>
@@ -132,16 +331,56 @@
     <div class="success-icon">✨</div>
     <div class="success-title">You're All Set!</div>
     <div class="success-message">
-      Scroll through your feed and rediscover your saved posts.
+      Resurfacing every <span id="intervalValue">20 minutes</span><br>
+      while you browse X
     </div>
-    <div class="success-stat-value" id="successBookmarkCount">0</div>
-    <div class="success-stat-label">Bookmarks synced</div>
+    <button class="resurface-button" id="resurfaceBtn">
+      Resurface Now
+    </button>
+    <div class="bookmark-count">
+      <span class="bookmark-count-value" id="bookmarkCount">0</span> bookmarks synced
+    </div>
+  </div>
+
+  <!-- Empty State Screen (No X Tabs) -->
+  <div class="content hidden" id="emptyScreen">
+    <div class="empty-icon">🔍</div>
+    <div class="empty-title">No X Tabs Found</div>
+    <div class="empty-message">
+      Open X in a browser tab to see resurfaced bookmarks in your feed.
+    </div>
+    <button class="open-x-button" id="openXBtn">
+      Open X
+    </button>
+  </div>
+
+  <!-- Settings Screen -->
+  <div class="content hidden relative" id="settingsScreen">
+    <button class="settings-back" id="settingsBackBtn" title="Back">
+      <svg viewBox="0 0 24 24">
+        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+      </svg>
+    </button>
+    <div class="settings-title">Settings</div>
+    <div class="setting-group">
+      <div class="setting-label">Resurface Interval</div>
+      <div class="interval-presets" id="intervalPresets">
+        <button class="interval-preset" data-minutes="10">10 min</button>
+        <button class="interval-preset" data-minutes="20">20 min</button>
+        <button class="interval-preset" data-minutes="30">30 min</button>
+        <button class="interval-preset" data-minutes="60">1 hour</button>
+        <button class="interval-preset" data-minutes="120">2 hours</button>
+      </div>
+      <div class="setting-note">
+        How often bookmarks appear in your feed
+      </div>
+    </div>
   </div>
 
   <!-- Footer -->
   <div class="footer">
     <span class="footer-name">X Bookmark Resurfacer</span>
-    <span>v1.0.0</span>
+    <span>v1.1.0</span>
   </div>
 
   <script src="popup.js"></script>

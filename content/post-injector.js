@@ -222,7 +222,6 @@ class PostInjector {
 
         // Method 1: Search for "Show posts" in ALL cellInnerDivs before the first tweet
         const allCells = document.querySelectorAll('[data-testid="cellInnerDiv"]');
-        log(`DEBUG: Scanning ${allCells.length} cells for "Show posts"`);
 
         for (const cell of allCells) {
           // Skip cells that contain tweets
@@ -231,7 +230,6 @@ class PostInjector {
           if (cell.closest('[data-resurfaced-cell]')) continue;
 
           const text = cell.textContent || '';
-          log(`DEBUG: Non-tweet cell text: "${text.substring(0, 80)}"`);
 
           // Check if this is a "Show posts" cell
           if (text.match(/\d+\s*(new\s+)?(posts?|publicaciones?)|\d+\s*nuevas?|mostrar.*\d+|show.*\d+/i)) {
@@ -286,15 +284,6 @@ class PostInjector {
       }
 
       log('Insertion complete');
-
-      // Verify position
-      setTimeout(() => {
-        const inserted = document.querySelector(`[data-bookmark-id="${bookmark.id}"]`);
-        if (inserted) {
-          const rect = inserted.getBoundingClientRect();
-          log(`DEBUG - Inserted at top=${rect.top.toFixed(0)}, height=${rect.height.toFixed(0)}`);
-        }
-      }, 300);
 
       return true;
     } catch (error) {

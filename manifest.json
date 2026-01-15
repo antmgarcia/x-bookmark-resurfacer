@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "X Bookmark Resurfacer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Automatically resurface your X/Twitter bookmarks in your feed as reminders",
 
   "permissions": [

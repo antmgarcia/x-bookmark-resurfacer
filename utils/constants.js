@@ -10,6 +10,16 @@ const STORAGE_CONFIG = {
   BOOKMARKS_STORE: 'bookmarks'
 };
 
+// Timing configuration for v1.1 customizable intervals
+const TIMING_CONFIG = {
+  DEFAULT_FIRST_INTERVAL_MINUTES: 5,   // First resurface after sync
+  DEFAULT_INTERVAL_MINUTES: 20,         // Subsequent resurfaces
+  MIN_INTERVAL_MINUTES: 10,             // Minimum user-selectable
+  MAX_INTERVAL_MINUTES: 120,            // Maximum (2 hours)
+  GRACE_PERIOD_MINUTES: 5,              // Queue timeout when no X tab
+  BUTTON_THROTTLE_MS: 2000              // Prevent button spam
+};
+
 // Injection timing and behavior
 const INJECTION_CONFIG = {
   ALARM_NAME: 'resurfaceBookmarks',
@@ -42,7 +52,12 @@ const MESSAGE_TYPES = {
   GET_BOOKMARK_COUNT: 'GET_BOOKMARK_COUNT',
   SET_ENABLED: 'SET_ENABLED',
   GET_ENABLED: 'GET_ENABLED',
-  TRIGGER_RESURFACE: 'TRIGGER_RESURFACE'
+  TRIGGER_RESURFACE: 'TRIGGER_RESURFACE',
+  // v1.1 additions
+  GET_NEXT_RESURFACE_TIME: 'GET_NEXT_RESURFACE_TIME',
+  SET_RESURFACE_INTERVAL: 'SET_RESURFACE_INTERVAL',
+  GET_RESURFACE_INTERVAL: 'GET_RESURFACE_INTERVAL',
+  CHECK_X_TABS: 'CHECK_X_TABS'
 };
 
 // DOM selectors for X/Twitter

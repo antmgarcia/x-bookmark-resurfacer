@@ -4,8 +4,12 @@
  */
 
 import { storageManager } from './storage-manager.js';
-import { MESSAGE_TYPES, INJECTION_CONFIG } from '../utils/constants.module.js';
+import { MESSAGE_TYPES, INJECTION_CONFIG, TIMING_CONFIG } from '../utils/constants.module.js';
 import { log, logError } from '../utils/helpers.module.js';
+
+// Alarm names
+const MAIN_ALARM = INJECTION_CONFIG.ALARM_NAME;
+const GRACE_ALARM = 'graceResurfaceAlarm';
 
 // Track initialization state
 let isInitialized = false;
@@ -140,10 +144,53 @@ async function setIconWithDot() {
 }
 
 /**
+ * Get user's configured interval or default
+ */
+async function getResurfaceInterval() {
+  const { resurfaceInterval, isFirstResurface = true } = await chrome.storage.local.get([
+    'resurfaceInterval',
+    'isFirstResurface'
+  ]);
+
+  if (resurfaceInterval !== undefined) {
+    return resurfaceInterval;
+  }
+
+  // Use first interval if no resurface has happened yet
+  return isFirstResurface
+    ? TIMING_CONFIG.DEFAULT_FIRST_INTERVAL_MINUTES
+    : TIMING_CONFIG.DEFAULT_INTERVAL_MINUTES;
+}
+
+/**
+ * Create or reset the main resurface alarm
+ */
+async function createResurfaceAlarm(delayMinutes = null) {
+  // Clear existing alarm
+  await chrome.alarms.clear(MAIN_ALARM);
+
+  // Get interval if not specified
+  if (delayMinutes === null) {
+    delayMinutes = await getResurfaceInterval();
+  }
+
+  // Create alarm (non-repeating, we recreate after each fire for dynamic intervals)
+  await chrome.alarms.create(MAIN_ALARM, {
+    delayInMinutes: delayMinutes
+  });
+
+  // Store next resurface timestamp for countdown display
+  const nextResurfaceTimestamp = Date.now() + (delayMinutes * 60 * 1000);
+  await chrome.storage.local.set({ nextResurfaceTimestamp });
+
+  log(`Alarm created: fires in ${delayMinutes}min at ${new Date(nextResurfaceTimestamp).toLocaleTimeString()}`);
+}
+
+/**
  * Ensure alarm exists (create if missing)
  */
 async function ensureAlarmExists() {
-  const existingAlarm = await chrome.alarms.get(INJECTION_CONFIG.ALARM_NAME);
+  const existingAlarm = await chrome.alarms.get(MAIN_ALARM);
 
   if (existingAlarm) {
     log(`Alarm exists, next fire in ${((existingAlarm.scheduledTime - Date.now()) / 60000).toFixed(1)}min`);
@@ -151,12 +198,7 @@ async function ensureAlarmExists() {
   }
 
   log('Alarm not found, creating...');
-  await chrome.alarms.create(INJECTION_CONFIG.ALARM_NAME, {
-    delayInMinutes: INJECTION_CONFIG.ALARM_DELAY_MINUTES,
-    periodInMinutes: INJECTION_CONFIG.ALARM_PERIOD_MINUTES
-  });
-
-  log(`Alarm created: first in ${INJECTION_CONFIG.ALARM_DELAY_MINUTES}min, then every ${INJECTION_CONFIG.ALARM_PERIOD_MINUTES}min`);
+  await createResurfaceAlarm();
 }
 
 // Initialize on install
@@ -182,22 +224,71 @@ chrome.runtime.onStartup.addListener(async () => {
 });
 
 /**
+ * Check if any X/Twitter tabs are open
+ */
+async function hasXTabs() {
+  const tabs = await chrome.tabs.query({
+    url: ['*://x.com/*', '*://twitter.com/*']
+  });
+  return tabs.length > 0;
+}
+
+/**
  * Handle alarm events
  */
 chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name === INJECTION_CONFIG.ALARM_NAME) {
-    log('=== ALARM FIRED ===');
-    // Ensure initialized (service worker may have woken up from sleep)
-    await ensureInitialized();
-    await updateBadge(); // Check if refresh is needed
-    await resurfaceBookmarks();
+  // Ensure initialized (service worker may have woken up from sleep)
+  await ensureInitialized();
+
+  if (alarm.name === MAIN_ALARM) {
+    log('=== MAIN ALARM FIRED ===');
+    await updateBadge();
+
+    // Check for X tabs
+    const hasXTab = await hasXTabs();
+
+    if (hasXTab) {
+      // X tab exists - inject and reset timer
+      await resurfaceBookmarks();
+      await chrome.storage.local.set({ isFirstResurface: false });
+      await createResurfaceAlarm();
+    } else {
+      // No X tab - enter grace period
+      log('No X tabs found, starting grace period...');
+      await chrome.storage.local.set({ pendingResurface: true });
+      await chrome.alarms.create(GRACE_ALARM, {
+        delayInMinutes: TIMING_CONFIG.GRACE_PERIOD_MINUTES
+      });
+    }
+  } else if (alarm.name === GRACE_ALARM) {
+    log('=== GRACE ALARM FIRED ===');
+    const { pendingResurface } = await chrome.storage.local.get(['pendingResurface']);
+
+    if (pendingResurface) {
+      const hasXTab = await hasXTabs();
+
+      if (hasXTab) {
+        // X tab opened during grace period
+        log('X tab found during grace period, injecting...');
+        await resurfaceBookmarks();
+        await chrome.storage.local.set({ pendingResurface: false, isFirstResurface: false });
+      } else {
+        // Grace period expired with no X tab
+        log('Grace period expired, no X tab found. Skipping resurface.');
+        await chrome.storage.local.set({ pendingResurface: false });
+      }
+
+      // Reset main timer for next cycle
+      await createResurfaceAlarm();
+    }
   }
 });
 
 /**
  * Main resurface function
+ * @param {boolean} forceReplace - If true, replace existing resurfaced post
  */
-async function resurfaceBookmarks() {
+async function resurfaceBookmarks(forceReplace = false) {
   try {
     log('=== RESURFACE TRIGGERED ===');
 
@@ -251,7 +342,8 @@ async function resurfaceBookmarks() {
 
         await chrome.tabs.sendMessage(tab.id, {
           type: MESSAGE_TYPES.INJECT_BOOKMARKS,
-          bookmarks: bookmarks
+          bookmarks: bookmarks,
+          forceReplace: forceReplace
         });
 
         successCount++;
@@ -320,8 +412,51 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         case MESSAGE_TYPES.TRIGGER_RESURFACE:
           log('Manual resurface triggered');
-          await resurfaceBookmarks();
-          sendResponse({ success: true });
+          const hasTab = await hasXTabs();
+          if (hasTab) {
+            await resurfaceBookmarks(message.forceReplace || false);
+            await chrome.storage.local.set({ isFirstResurface: false });
+            await createResurfaceAlarm(); // Reset timer after manual trigger
+            sendResponse({ success: true });
+          } else {
+            sendResponse({ success: false, error: 'No X tabs found' });
+          }
+          break;
+
+        case MESSAGE_TYPES.GET_NEXT_RESURFACE_TIME:
+          const { nextResurfaceTimestamp } = await chrome.storage.local.get(['nextResurfaceTimestamp']);
+          const remainingMs = nextResurfaceTimestamp ? nextResurfaceTimestamp - Date.now() : 0;
+          sendResponse({
+            success: true,
+            nextResurfaceTimestamp,
+            remainingMs: Math.max(0, remainingMs)
+          });
+          break;
+
+        case MESSAGE_TYPES.SET_RESURFACE_INTERVAL:
+          const newInterval = Math.min(
+            Math.max(message.interval, TIMING_CONFIG.MIN_INTERVAL_MINUTES),
+            TIMING_CONFIG.MAX_INTERVAL_MINUTES
+          );
+          await chrome.storage.local.set({ resurfaceInterval: newInterval });
+          log(`Resurface interval set to ${newInterval} minutes`);
+          // Don't reset current timer - apply on next cycle per PRD
+          sendResponse({ success: true, interval: newInterval });
+          break;
+
+        case MESSAGE_TYPES.GET_RESURFACE_INTERVAL:
+          const currentInterval = await getResurfaceInterval();
+          const { resurfaceInterval: savedInterval } = await chrome.storage.local.get(['resurfaceInterval']);
+          sendResponse({
+            success: true,
+            interval: savedInterval || currentInterval,
+            isDefault: savedInterval === undefined
+          });
+          break;
+
+        case MESSAGE_TYPES.CHECK_X_TABS:
+          const xTabsExist = await hasXTabs();
+          sendResponse({ success: true, hasXTabs: xTabsExist });
           break;
 
         default:
