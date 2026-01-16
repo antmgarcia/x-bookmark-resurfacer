@@ -177,6 +177,59 @@ class StorageManager {
   }
 
   /**
+   * Get bookmark availability stats
+   * Returns counts of total, eligible, in-cooldown, and retired bookmarks
+   */
+  async getBookmarkAvailability() {
+    await this.ensureReady();
+
+    const allBookmarks = await this.getAllBookmarks();
+    const now = new Date();
+
+    let eligibleCount = 0;
+    let inCooldownCount = 0;
+    let retiredCount = 0;
+    let nextAvailableAt = null;
+
+    for (const bookmark of allBookmarks) {
+      const resurfaceCount = bookmark.resurfaced_count || 0;
+
+      // Check if retired (hit max resurface count)
+      if (resurfaceCount >= INJECTION_CONFIG.MAX_RESURFACE_COUNT) {
+        retiredCount++;
+        continue;
+      }
+
+      // Check if in cooldown
+      if (bookmark.last_resurfaced_at) {
+        const lastTime = new Date(bookmark.last_resurfaced_at);
+        const hoursPassed = (now - lastTime) / (1000 * 60 * 60);
+
+        if (hoursPassed < INJECTION_CONFIG.MIN_TIME_BETWEEN_RESURFACES_HOURS) {
+          inCooldownCount++;
+
+          // Calculate when this bookmark will be available
+          const cooldownEndsAt = new Date(lastTime.getTime() + INJECTION_CONFIG.MIN_TIME_BETWEEN_RESURFACES_HOURS * 60 * 60 * 1000);
+          if (!nextAvailableAt || cooldownEndsAt < nextAvailableAt) {
+            nextAvailableAt = cooldownEndsAt;
+          }
+          continue;
+        }
+      }
+
+      eligibleCount++;
+    }
+
+    return {
+      totalCount: allBookmarks.length,
+      eligibleCount,
+      inCooldownCount,
+      retiredCount,
+      nextAvailableAt: nextAvailableAt ? nextAvailableAt.toISOString() : null
+    };
+  }
+
+  /**
    * Get bookmark count
    */
   async getBookmarkCount() {

@@ -13,6 +13,7 @@ let elements = {};
 // State
 let currentScreen = null;
 let countdownInterval = null;
+let cooldownTimerInterval = null;
 
 /**
  * Initialize DOM element references
@@ -23,6 +24,7 @@ function initElements() {
     setupScreen: document.getElementById('setupScreen'),
     successScreen: document.getElementById('successScreen'),
     emptyScreen: document.getElementById('emptyScreen'),
+    cooldownScreen: document.getElementById('cooldownScreen'),
     settingsScreen: document.getElementById('settingsScreen'),
     mainHeader: document.getElementById('mainHeader'),
 
@@ -31,6 +33,9 @@ function initElements() {
     resurfaceBtn: document.getElementById('resurfaceBtn'),
     openXBtn: document.getElementById('openXBtn'),
     bookmarkCount: document.getElementById('bookmarkCount'),
+
+    // Cooldown screen elements
+    cooldownTimer: document.getElementById('cooldownTimer'),
 
     // Settings
     settingsBtn: document.getElementById('settingsBtn'),
@@ -46,6 +51,7 @@ function hideAllScreens() {
   elements.setupScreen.classList.add('hidden');
   elements.successScreen.classList.add('hidden');
   elements.emptyScreen.classList.add('hidden');
+  elements.cooldownScreen.classList.add('hidden');
   elements.settingsScreen.classList.add('hidden');
 }
 
@@ -67,6 +73,10 @@ function showScreen(screenName) {
       break;
     case 'empty':
       elements.emptyScreen.classList.remove('hidden');
+      elements.mainHeader.classList.remove('hidden');
+      break;
+    case 'cooldown':
+      elements.cooldownScreen.classList.remove('hidden');
       elements.mainHeader.classList.remove('hidden');
       break;
     case 'settings':
@@ -150,6 +160,69 @@ async function checkCooldownState() {
 }
 
 /**
+ * Check bookmark availability and return status
+ */
+async function checkBookmarkAvailability() {
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'GET_BOOKMARK_AVAILABILITY'
+    });
+
+    if (response && response.success) {
+      return {
+        totalCount: response.totalCount,
+        eligibleCount: response.eligibleCount,
+        inCooldownCount: response.inCooldownCount,
+        retiredCount: response.retiredCount,
+        nextAvailableAt: response.nextAvailableAt
+      };
+    }
+  } catch (error) {
+    console.error('Error checking bookmark availability:', error);
+  }
+
+  return null;
+}
+
+/**
+ * Update and display cooldown screen with timer
+ */
+function showCooldownScreen(availability) {
+  // Clear any existing timer
+  if (cooldownTimerInterval) {
+    clearInterval(cooldownTimerInterval);
+    cooldownTimerInterval = null;
+  }
+
+  if (availability.nextAvailableAt) {
+    const updateTimer = () => {
+      const nextTime = new Date(availability.nextAvailableAt);
+      const remaining = nextTime - Date.now();
+
+      if (remaining <= 0) {
+        clearInterval(cooldownTimerInterval);
+        cooldownTimerInterval = null;
+        elements.cooldownTimer.textContent = 'now!';
+        // Refresh to success screen after a moment
+        setTimeout(() => initPopup(), 1500);
+        return;
+      }
+
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      elements.cooldownTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    updateTimer();
+    cooldownTimerInterval = setInterval(updateTimer, 1000);
+  } else {
+    elements.cooldownTimer.textContent = 'soon';
+  }
+
+  showScreen('cooldown');
+}
+
+/**
  * Load and display current interval
  */
 async function loadAndDisplayInterval() {
@@ -183,18 +256,25 @@ async function handleResurfaceNow() {
       forceReplace: true
     });
 
-    if (response && response.success) {
+    if (response && response.success && response.injected) {
+      // Injection successful
       btn.textContent = 'Done!';
 
-      // Start cooldown countdown
-      const cooldownUntil = Date.now() + MANUAL_RESURFACE_COOLDOWN_MS;
-      await chrome.storage.local.set({ resurfaceCooldownUntil: cooldownUntil });
+      // Check if more bookmarks are available after this resurface
+      setTimeout(async () => {
+        const availability = await checkBookmarkAvailability();
 
-      // Brief "Done!" display, then start countdown
-      setTimeout(() => {
-        startButtonCountdown(cooldownUntil);
+        if (availability && availability.eligibleCount === 0 && availability.inCooldownCount > 0) {
+          // No more bookmarks available - show cooldown screen
+          showCooldownScreen(availability);
+        } else {
+          // More bookmarks available - start button cooldown countdown
+          const cooldownUntil = Date.now() + MANUAL_RESURFACE_COOLDOWN_MS;
+          await chrome.storage.local.set({ resurfaceCooldownUntil: cooldownUntil });
+          startButtonCountdown(cooldownUntil);
+        }
       }, 1000);
-    } else {
+    } else if (response && !response.success && response.reason === 'no_tabs') {
       // No X tabs found
       btn.textContent = 'No X Tab';
       setTimeout(() => {
@@ -202,6 +282,15 @@ async function handleResurfaceNow() {
         btn.textContent = 'Resurface Now';
         showScreen('empty');
       }, 1000);
+    } else {
+      // Injection failed for other reasons - show gentle message
+      btn.textContent = 'Not this time';
+      setTimeout(async () => {
+        // Start cooldown countdown anyway so user can try again
+        const cooldownUntil = Date.now() + MANUAL_RESURFACE_COOLDOWN_MS;
+        await chrome.storage.local.set({ resurfaceCooldownUntil: cooldownUntil });
+        startButtonCountdown(cooldownUntil);
+      }, 2500);
     }
   } catch (error) {
     console.error('Error triggering resurface:', error);
@@ -278,10 +367,18 @@ function setupEventListeners() {
   elements.settingsBackBtn.addEventListener('click', async () => {
     // Reload interval display in case it changed
     await loadAndDisplayInterval();
+
     // Return to appropriate screen
-    const response = await chrome.runtime.sendMessage({ type: 'CHECK_X_TABS' });
-    if (response && response.success && response.hasXTabs) {
-      showScreen('success');
+    const tabResponse = await chrome.runtime.sendMessage({ type: 'CHECK_X_TABS' });
+    if (tabResponse && tabResponse.success && tabResponse.hasXTabs) {
+      // Check bookmark availability
+      const availability = await checkBookmarkAvailability();
+      if (availability && availability.eligibleCount === 0 && availability.inCooldownCount > 0) {
+        showCooldownScreen(availability);
+      } else {
+        showScreen('success');
+        await checkCooldownState();
+      }
     } else {
       showScreen('empty');
     }
@@ -376,13 +473,21 @@ async function initPopup() {
     // Has bookmarks but no X tabs - show empty state
     showScreen('empty');
   } else {
-    // Has bookmarks and X tabs - show success with interval
-    elements.bookmarkCount.textContent = bookmarkCount;
-    await loadAndDisplayInterval();
-    showScreen('success');
+    // Has bookmarks and X tabs - check availability
+    const availability = await checkBookmarkAvailability();
 
-    // Check if we're in cooldown and restore countdown
-    await checkCooldownState();
+    if (availability && availability.eligibleCount === 0 && availability.inCooldownCount > 0) {
+      // All bookmarks in cooldown - show cooldown screen
+      showCooldownScreen(availability);
+    } else {
+      // Has available bookmarks - show success with interval
+      elements.bookmarkCount.textContent = bookmarkCount;
+      await loadAndDisplayInterval();
+      showScreen('success');
+
+      // Check if we're in button cooldown and restore countdown
+      await checkCooldownState();
+    }
   }
 
   // Setup event listeners (only once)

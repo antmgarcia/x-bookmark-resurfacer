@@ -233,27 +233,31 @@ class BookmarkResurfacerContent {
   handleExtensionMessage(message, sender, sendResponse) {
     log('Received message:', message.type);
 
-    switch (message.type) {
-      case MESSAGE_TYPES.INJECT_BOOKMARKS:
-        log(`Received ${message.bookmarks?.length || 0} bookmarks to inject`);
-        log(`Session: ${this.sessionResurfaceCount}/${this.maxResurfacesPerSession}`);
-        log(`Force replace: ${message.forceReplace || false}`);
-        this.injectBookmarksIntoFeed(message.bookmarks, message.forceReplace || false);
-        sendResponse({ success: true });
-        break;
+    // Handle async message processing
+    (async () => {
+      switch (message.type) {
+        case MESSAGE_TYPES.INJECT_BOOKMARKS:
+          log(`Received ${message.bookmarks?.length || 0} bookmarks to inject`);
+          log(`Session: ${this.sessionResurfaceCount}/${this.maxResurfacesPerSession}`);
+          log(`Force replace: ${message.forceReplace || false}`);
+          const result = await this.injectBookmarksIntoFeed(message.bookmarks, message.forceReplace || false);
+          sendResponse({ success: true, ...result });
+          break;
 
-      case 'RESET_SESSION':
-        this.sessionResurfaceCount = 0;
-        this.injectedBookmarks.clear();
-        log('Session reset');
-        sendResponse({ success: true });
-        break;
+        case 'RESET_SESSION':
+          this.sessionResurfaceCount = 0;
+          this.injectedBookmarks.clear();
+          log('Session reset');
+          sendResponse({ success: true });
+          break;
 
-      default:
-        log('Unknown message type:', message.type);
-    }
+        default:
+          log('Unknown message type:', message.type);
+          sendResponse({ success: false, error: 'Unknown message type' });
+      }
+    })();
 
-    return true;
+    return true; // Keep channel open for async response
   }
 
   /**
@@ -346,11 +350,12 @@ class BookmarkResurfacerContent {
    * Inject bookmarks into feed
    * @param {Array} bookmarks - Bookmarks to inject
    * @param {boolean} forceReplace - If true, replace existing resurfaced post and skip cooldown
+   * @returns {Object} Result with injected status and reason if failed
    */
   async injectBookmarksIntoFeed(bookmarks, forceReplace = false) {
     if (!bookmarks || bookmarks.length === 0) {
       log('No bookmarks to inject');
-      return;
+      return { injected: false, reason: 'no_bookmarks' };
     }
 
     // Check if there's already a resurfaced post visible
@@ -362,7 +367,7 @@ class BookmarkResurfacerContent {
         existingResurfaced.forEach(el => el.remove());
       } else {
         log('Resurfaced post already visible, skipping');
-        return;
+        return { injected: false, reason: 'already_visible' };
       }
     }
 
@@ -373,19 +378,19 @@ class BookmarkResurfacerContent {
       if (this.lastResurfaceTime > 0 && timeSinceLastResurface < this.minTimeBetweenResurfacesMs) {
         const waitMinutes = ((this.minTimeBetweenResurfacesMs - timeSinceLastResurface) / 60000).toFixed(1);
         log(`Too soon since last resurface, wait ${waitMinutes} more minutes`);
-        return;
+        return { injected: false, reason: 'cooldown' };
       }
     }
 
     // Check session cap
     if (this.sessionResurfaceCount >= this.maxResurfacesPerSession) {
       log(`Session cap reached (${this.sessionResurfaceCount}/${this.maxResurfacesPerSession})`);
-      return;
+      return { injected: false, reason: 'session_cap' };
     }
 
     if (this.isInjecting) {
       log('Already injecting, skipping');
-      return;
+      return { injected: false, reason: 'already_injecting' };
     }
 
     this.isInjecting = true;
@@ -394,6 +399,8 @@ class BookmarkResurfacerContent {
     if (!this.injector) {
       this.injector = new PostInjector();
     }
+
+    let injectionSuccess = false;
 
     for (const bookmark of bookmarks) {
       if (this.injectedBookmarks.has(bookmark.id)) {
@@ -414,6 +421,7 @@ class BookmarkResurfacerContent {
           this.sessionResurfaceCount++;
           this.lastResurfaceTime = Date.now(); // Track when we last showed a resurfaced post
           log(`Injected bookmark ${bookmark.id} (session: ${this.sessionResurfaceCount})`);
+          injectionSuccess = true;
 
           chrome.runtime.sendMessage({
             type: MESSAGE_TYPES.UPDATE_RESURFACE_STATS,
@@ -433,6 +441,8 @@ class BookmarkResurfacerContent {
 
     this.isInjecting = false;
     log('Injection complete');
+
+    return { injected: injectionSuccess, reason: injectionSuccess ? null : 'injection_failed' };
   }
 }
 

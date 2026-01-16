@@ -287,6 +287,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 /**
  * Main resurface function
  * @param {boolean} forceReplace - If true, replace existing resurfaced post
+ * @returns {Object} Result with injected status
  */
 async function resurfaceBookmarks(forceReplace = false) {
   try {
@@ -297,7 +298,7 @@ async function resurfaceBookmarks(forceReplace = false) {
 
     if (!enabled) {
       log('Extension disabled, skipping resurface');
-      return;
+      return { injected: false, reason: 'disabled' };
     }
 
     // Log bookmark stats
@@ -313,8 +314,7 @@ async function resurfaceBookmarks(forceReplace = false) {
 
     if (bookmarks.length === 0) {
       log('No bookmarks available to resurface - all may be in cooldown');
-      log('Run resetStats() in this console to clear cooldowns');
-      return;
+      return { injected: false, reason: 'no_eligible_bookmarks' };
     }
 
     log(`Selected bookmark: ${bookmarks[0]?.id} by @${bookmarks[0]?.author?.screen_name}`);
@@ -326,11 +326,11 @@ async function resurfaceBookmarks(forceReplace = false) {
 
     if (tabs.length === 0) {
       log('No X/Twitter tabs found');
-      return;
+      return { injected: false, reason: 'no_tabs' };
     }
 
     // Send to home feed tabs only
-    let successCount = 0;
+    let injectionResult = null;
     for (const tab of tabs) {
       try {
         if (!tab.id || tab.discarded || tab.status !== 'complete') continue;
@@ -340,24 +340,37 @@ async function resurfaceBookmarks(forceReplace = false) {
 
         if (!isHomeFeed) continue;
 
-        await chrome.tabs.sendMessage(tab.id, {
+        const response = await chrome.tabs.sendMessage(tab.id, {
           type: MESSAGE_TYPES.INJECT_BOOKMARKS,
           bookmarks: bookmarks,
           forceReplace: forceReplace
         });
 
-        successCount++;
-        log(`Sent bookmarks to tab ${tab.id}`);
+        log(`Tab ${tab.id} response:`, response);
+
+        // Track the first successful injection
+        if (response && response.injected) {
+          injectionResult = response;
+          break;
+        } else if (!injectionResult) {
+          injectionResult = response;
+        }
       } catch (error) {
         // Tab not ready, skip silently
+        log(`Tab ${tab.id} error:`, error.message);
       }
     }
 
-    if (successCount > 0) {
-      log(`Injected into ${successCount} tab(s)`);
+    if (injectionResult && injectionResult.injected) {
+      log('Injection successful');
+      return { injected: true };
+    } else {
+      log('Injection failed:', injectionResult?.reason || 'unknown');
+      return { injected: false, reason: injectionResult?.reason || 'injection_failed' };
     }
   } catch (error) {
     logError('Error in resurfaceBookmarks:', error);
+    return { injected: false, reason: 'error' };
   }
 }
 
@@ -414,12 +427,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           log('Manual resurface triggered');
           const hasTab = await hasXTabs();
           if (hasTab) {
-            await resurfaceBookmarks(message.forceReplace || false);
+            const injectionResult = await resurfaceBookmarks(message.forceReplace || false);
             await chrome.storage.local.set({ isFirstResurface: false });
             await createResurfaceAlarm(); // Reset timer after manual trigger
-            sendResponse({ success: true });
+            sendResponse({ success: true, ...injectionResult });
           } else {
-            sendResponse({ success: false, error: 'No X tabs found' });
+            sendResponse({ success: false, error: 'No X tabs found', injected: false, reason: 'no_tabs' });
           }
           break;
 
@@ -457,6 +470,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case MESSAGE_TYPES.CHECK_X_TABS:
           const xTabsExist = await hasXTabs();
           sendResponse({ success: true, hasXTabs: xTabsExist });
+          break;
+
+        case MESSAGE_TYPES.GET_BOOKMARK_AVAILABILITY:
+          const availability = await storageManager.getBookmarkAvailability();
+          sendResponse({ success: true, ...availability });
           break;
 
         default:

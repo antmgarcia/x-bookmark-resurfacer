@@ -196,6 +196,43 @@
       background: #272c30;
     }
 
+    /* Cooldown Screen */
+    .cooldown-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .cooldown-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f1419;
+      margin-bottom: 8px;
+    }
+
+    .cooldown-message {
+      font-size: 14px;
+      color: #536471;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .cooldown-timer {
+      font-weight: 600;
+      color: #1d9bf0;
+    }
+
+    .cooldown-sync-link {
+      display: inline-block;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #1d9bf0;
+      text-decoration: none;
+    }
+
+    .cooldown-sync-link:hover {
+      text-decoration: underline;
+    }
+
     /* Settings Screen */
     .settings-title {
       font-size: 18px;
@@ -352,6 +389,19 @@
     <button class="open-x-button" id="openXBtn">
       Open X
     </button>
+  </div>
+
+  <!-- Cooldown Screen (All bookmarks in cooldown) -->
+  <div class="content hidden" id="cooldownScreen">
+    <div class="cooldown-icon">⏳</div>
+    <div class="cooldown-title">All Caught Up!</div>
+    <div class="cooldown-message">
+      Your bookmarks are cooling down.<br>
+      Next available in <span id="cooldownTimer">--:--</span>
+    </div>
+    <a href="https://x.com/i/bookmarks" target="_blank" class="cooldown-sync-link">
+      Scroll your bookmarks to sync more
+    </a>
   </div>
 
   <!-- Settings Screen -->
