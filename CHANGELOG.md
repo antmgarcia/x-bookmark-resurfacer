@@ -2,6 +2,23 @@
 
 All notable changes to X Bookmark Resurfacer will be documented in this file.
 
+## [1.1.1] - 2026-01-17
+
+### Added
+- **"No Bookmarks Found" Screen** - New screen for users who synced but have zero bookmarks saved on X
+- **"Fully Resurfaced" Screen** - New screen when all bookmarks have been resurfaced 10+ times
+- **Toast Notification** - X-style toast with "View" button when manually resurfacing while scrolled down
+- **Specific Error Messages** - Replaced vague "Not this time" with clear messages like "Session limit reached", "Feed not found", etc.
+
+### Changed
+- Improved screen flow logic to distinguish between "never synced" and "synced but empty"
+- Error states now transition to appropriate screens (e.g., "All in cooldown" → Cooldown screen)
+- Settings back button now correctly handles All Retired state
+
+### Fixed
+- First-time users with no bookmarks no longer get stuck in a confusing loop
+- Button error messages now provide actionable feedback
+
 ## [1.1.0] - 2026-01-16
 
 ### Added

@@ -3,7 +3,7 @@
  * Main orchestration script for the extension
  */
 
-log('Content script loading v1.1.0');
+log('Content script loading v1.1.1');
 log('Page URL:', window.location.href);
 
 class BookmarkResurfacerContent {
@@ -414,6 +414,9 @@ class BookmarkResurfacerContent {
       }
 
       try {
+        // Check if scrolled down before injection (for toast decision)
+        const wasScrolledDown = this.injector.isScrolledDown();
+
         const success = await this.injector.injectBookmark(bookmark);
 
         if (success) {
@@ -422,6 +425,11 @@ class BookmarkResurfacerContent {
           this.lastResurfaceTime = Date.now(); // Track when we last showed a resurfaced post
           log(`Injected bookmark ${bookmark.id} (session: ${this.sessionResurfaceCount})`);
           injectionSuccess = true;
+
+          // Show toast if this was a manual resurface and user is scrolled down
+          if (forceReplace && wasScrolledDown) {
+            this.injector.showToast('Bookmark resurfaced at top');
+          }
 
           chrome.runtime.sendMessage({
             type: MESSAGE_TYPES.UPDATE_RESURFACE_STATS,

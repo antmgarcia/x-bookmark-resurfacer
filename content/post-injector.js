@@ -8,6 +8,81 @@ class PostInjector {
     this.injectedBookmarkIds = new Set();
     this.isInjecting = false;
     this.lastInjectionTime = 0;
+    this.activeToast = null;
+  }
+
+  /**
+   * Check if user is scrolled down from the top
+   */
+  isScrolledDown() {
+    return window.scrollY > 300;
+  }
+
+  /**
+   * Scroll to top of the page smoothly
+   */
+  scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /**
+   * Show toast notification with "View" button
+   */
+  showToast(message = 'Post resurfaced at top') {
+    // Remove any existing toast
+    if (this.activeToast) {
+      this.activeToast.remove();
+      this.activeToast = null;
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'resurfacer-toast';
+
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'resurfacer-toast-message';
+    messageSpan.textContent = message;
+
+    const viewButton = document.createElement('button');
+    viewButton.className = 'resurfacer-toast-button';
+    viewButton.textContent = 'View';
+    viewButton.addEventListener('click', () => {
+      this.scrollToTop();
+      this.hideToast(toast);
+    });
+
+    toast.appendChild(messageSpan);
+    toast.appendChild(viewButton);
+    document.body.appendChild(toast);
+
+    this.activeToast = toast;
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      toast.classList.add('visible');
+    });
+
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+      this.hideToast(toast);
+    }, 5000);
+  }
+
+  /**
+   * Hide and remove toast
+   */
+  hideToast(toast) {
+    if (!toast) return;
+
+    toast.classList.remove('visible');
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.remove();
+      }
+      if (this.activeToast === toast) {
+        this.activeToast = null;
+      }
+    }, 300);
   }
 
   /**
