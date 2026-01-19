@@ -2,6 +2,27 @@
 
 All notable changes to X Bookmark Resurfacer will be documented in this file.
 
+## [1.1.2] - 2026-01-19
+
+### Added
+- **Sync Notification Toast** - Other X tabs now show a "Bookmarks synced! Reload to start resurfacing." toast when bookmarks are synced from the bookmarks page
+- **Multi-Tab Resurface** - "Resurface Now" button now injects different bookmarks into ALL open X home feed tabs simultaneously
+- **Background Tab Toast Support** - All toasts (sync and resurface) queue for background tabs and appear when user switches to them
+
+### Changed
+- "Resurface Now" behavior improved: injects into all home feed tabs instead of just one
+- Toast notifications are now visibility-aware and won't be missed on background tabs
+
+### Removed
+- Removed unused "Too soon" error message (dead code)
+
+### Technical
+- Added `NOTIFY_SYNC` and `SYNC_COMPLETE` message types for cross-tab communication
+- Added visibility change listener to handle background tab notifications
+- Service worker now broadcasts sync events to all open X tabs
+- `resurfaceBookmarks()` now fetches multiple bookmarks when needed for multi-tab injection
+- Added `pendingResurfaceToast` flag for deferred toast display
+
 ## [1.1.1] - 2026-01-17
 
 ### Added

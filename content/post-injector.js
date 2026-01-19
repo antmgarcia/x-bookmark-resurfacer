@@ -69,6 +69,48 @@ class PostInjector {
   }
 
   /**
+   * Show reload toast notification with "Reload" button
+   */
+  showReloadToast(message = 'Bookmarks synced! Reload to start resurfacing.') {
+    // Remove any existing toast
+    if (this.activeToast) {
+      this.activeToast.remove();
+      this.activeToast = null;
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'resurfacer-toast';
+
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'resurfacer-toast-message';
+    messageSpan.textContent = message;
+
+    const reloadButton = document.createElement('button');
+    reloadButton.className = 'resurfacer-toast-button';
+    reloadButton.textContent = 'Reload';
+    reloadButton.addEventListener('click', () => {
+      window.location.reload();
+    });
+
+    toast.appendChild(messageSpan);
+    toast.appendChild(reloadButton);
+    document.body.appendChild(toast);
+
+    this.activeToast = toast;
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      toast.classList.add('visible');
+    });
+
+    // Auto-dismiss after 8 seconds (longer than regular toast)
+    setTimeout(() => {
+      this.hideToast(toast);
+    }, 8000);
+  }
+
+  /**
    * Hide and remove toast
    */
   hideToast(toast) {

@@ -305,10 +305,27 @@ async function resurfaceBookmarks(forceReplace = false) {
     const totalCount = await storageManager.getBookmarkCount();
     log(`Total bookmarks in database: ${totalCount}`);
 
-    // Get random bookmarks
-    const bookmarks = await storageManager.getRandomBookmarks(
-      INJECTION_CONFIG.POSTS_PER_INJECTION
-    );
+    // Find X/Twitter home feed tabs first to know how many bookmarks we need
+    const allTabs = await chrome.tabs.query({
+      url: ['*://x.com/*', '*://twitter.com/*']
+    });
+
+    const homeFeedTabs = allTabs.filter(tab => {
+      if (!tab.id || tab.discarded || tab.status !== 'complete') return false;
+      const url = tab.url || '';
+      return /^https:\/\/(x|twitter)\.com\/(home)?(\?.*)?$/.test(url);
+    });
+
+    if (homeFeedTabs.length === 0) {
+      log('No X/Twitter home feed tabs found');
+      return { injected: false, reason: 'no_tabs' };
+    }
+
+    log(`Found ${homeFeedTabs.length} home feed tab(s)`);
+
+    // Get enough random bookmarks for all tabs (one per tab)
+    const bookmarksNeeded = forceReplace ? homeFeedTabs.length : INJECTION_CONFIG.POSTS_PER_INJECTION;
+    const bookmarks = await storageManager.getRandomBookmarks(bookmarksNeeded);
 
     log(`Eligible bookmarks found: ${bookmarks.length}`);
 
@@ -317,56 +334,44 @@ async function resurfaceBookmarks(forceReplace = false) {
       return { injected: false, reason: 'no_eligible_bookmarks' };
     }
 
-    log(`Selected bookmark: ${bookmarks[0]?.id} by @${bookmarks[0]?.author?.screen_name}`);
+    // Send to all home feed tabs, each gets a different bookmark if available
+    let successCount = 0;
+    let lastFailReason = null;
 
-    // Find X/Twitter tabs
-    const tabs = await chrome.tabs.query({
-      url: ['*://x.com/*', '*://twitter.com/*']
-    });
+    for (let i = 0; i < homeFeedTabs.length; i++) {
+      const tab = homeFeedTabs[i];
+      // Use different bookmark for each tab, or cycle if not enough bookmarks
+      const bookmark = bookmarks[i % bookmarks.length];
 
-    if (tabs.length === 0) {
-      log('No X/Twitter tabs found');
-      return { injected: false, reason: 'no_tabs' };
-    }
-
-    // Send to home feed tabs only
-    let injectionResult = null;
-    for (const tab of tabs) {
       try {
-        if (!tab.id || tab.discarded || tab.status !== 'complete') continue;
-
-        const url = tab.url || '';
-        const isHomeFeed = /^https:\/\/(x|twitter)\.com\/(home)?(\?.*)?$/.test(url);
-
-        if (!isHomeFeed) continue;
+        log(`Injecting bookmark ${bookmark.id} into tab ${tab.id}`);
 
         const response = await chrome.tabs.sendMessage(tab.id, {
           type: MESSAGE_TYPES.INJECT_BOOKMARKS,
-          bookmarks: bookmarks,
+          bookmarks: [bookmark],
           forceReplace: forceReplace
         });
 
         log(`Tab ${tab.id} response:`, response);
 
-        // Track the first successful injection
         if (response && response.injected) {
-          injectionResult = response;
-          break;
-        } else if (!injectionResult) {
-          injectionResult = response;
+          successCount++;
+        } else {
+          lastFailReason = response?.reason;
         }
       } catch (error) {
         // Tab not ready, skip silently
         log(`Tab ${tab.id} error:`, error.message);
+        lastFailReason = 'tab_error';
       }
     }
 
-    if (injectionResult && injectionResult.injected) {
-      log('Injection successful');
-      return { injected: true };
+    if (successCount > 0) {
+      log(`Injection successful: ${successCount}/${homeFeedTabs.length} tabs`);
+      return { injected: true, tabsInjected: successCount };
     } else {
-      log('Injection failed:', injectionResult?.reason || 'unknown');
-      return { injected: false, reason: injectionResult?.reason || 'injection_failed' };
+      log('Injection failed on all tabs:', lastFailReason || 'unknown');
+      return { injected: false, reason: lastFailReason || 'injection_failed' };
     }
   } catch (error) {
     logError('Error in resurfaceBookmarks:', error);
@@ -475,6 +480,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case MESSAGE_TYPES.GET_BOOKMARK_AVAILABILITY:
           const availability = await storageManager.getBookmarkAvailability();
           sendResponse({ success: true, ...availability });
+          break;
+
+        case MESSAGE_TYPES.NOTIFY_SYNC:
+          // Broadcast sync notification to all X tabs except the sender
+          const xTabs = await chrome.tabs.query({
+            url: ['*://x.com/*', '*://twitter.com/*']
+          });
+
+          for (const tab of xTabs) {
+            // Skip the tab that sent the notification
+            if (tab.id === sender.tab?.id) continue;
+            // Skip discarded or incomplete tabs
+            if (!tab.id || tab.discarded || tab.status !== 'complete') continue;
+
+            try {
+              await chrome.tabs.sendMessage(tab.id, {
+                type: MESSAGE_TYPES.SYNC_COMPLETE
+              });
+            } catch {
+              // Tab might not have content script ready, skip silently
+            }
+          }
+          sendResponse({ success: true });
           break;
 
         default:

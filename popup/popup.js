@@ -318,8 +318,7 @@ async function handleResurfaceNow() {
         'already_visible': 'Already showing',
         'already_injecting': 'Please wait...',
         'injection_failed': 'Feed not found',
-        'no_bookmarks': 'No bookmarks',
-        'cooldown': 'Too soon'
+        'no_bookmarks': 'No bookmarks'
       };
       btn.textContent = messages[reason] || 'Try again';
 

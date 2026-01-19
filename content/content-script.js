@@ -3,7 +3,7 @@
  * Main orchestration script for the extension
  */
 
-log('Content script loading v1.1.1');
+log('Content script loading v1.1.2');
 log('Page URL:', window.location.href);
 
 class BookmarkResurfacerContent {
@@ -17,6 +17,8 @@ class BookmarkResurfacerContent {
     this.lastResurfaceTime = 0;
     this.minTimeBetweenResurfacesMs = 3 * 60 * 1000; // 3 minutes minimum between resurfaced posts
     this.urlCheckInterval = null; // Store interval ID for cleanup
+    this.pendingSyncToast = false; // Flag for showing sync toast when tab becomes visible
+    this.pendingResurfaceToast = false; // Flag for showing resurface toast when tab becomes visible
     this.init();
   }
 
@@ -33,6 +35,9 @@ class BookmarkResurfacerContent {
 
     // Listen for messages from background (inject commands)
     chrome.runtime.onMessage.addListener(this.handleExtensionMessage.bind(this));
+
+    // Listen for tab visibility changes (to show pending toasts)
+    document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this));
 
     // Wait for timeline
     this.setupInjectionObserver();
@@ -207,6 +212,15 @@ class BookmarkResurfacerContent {
 
           log(`Bookmarks stored successfully! Count: ${response?.count || tweets.length}`);
 
+          // Notify other X tabs about the sync
+          try {
+            await chrome.runtime.sendMessage({
+              type: MESSAGE_TYPES.NOTIFY_SYNC
+            });
+          } catch {
+            // Non-critical, continue
+          }
+
           try {
             await chrome.runtime.sendMessage({
               type: MESSAGE_TYPES.TRIGGER_RESURFACE
@@ -248,6 +262,19 @@ class BookmarkResurfacerContent {
           this.sessionResurfaceCount = 0;
           this.injectedBookmarks.clear();
           log('Session reset');
+          sendResponse({ success: true });
+          break;
+
+        case MESSAGE_TYPES.SYNC_COMPLETE:
+          // Show reload toast if we're not on the bookmarks page (where sync happened)
+          if (!this.isBookmarksPage()) {
+            if (document.hidden) {
+              // Tab is not visible, queue the toast for when it becomes visible
+              this.pendingSyncToast = true;
+            } else {
+              this.showReloadToast();
+            }
+          }
           sendResponse({ success: true });
           break;
 
@@ -326,6 +353,45 @@ class BookmarkResurfacerContent {
     const resurfaced = document.querySelectorAll('[data-resurfaced-cell]');
     resurfaced.forEach(el => el.remove());
     log(`Removed ${resurfaced.length} resurfaced post(s)`);
+  }
+
+  /**
+   * Handle tab visibility changes
+   */
+  handleVisibilityChange() {
+    if (!document.hidden) {
+      // Show pending sync toast
+      if (this.pendingSyncToast) {
+        this.pendingSyncToast = false;
+        this.showReloadToast();
+      }
+      // Show pending resurface toast
+      if (this.pendingResurfaceToast) {
+        this.pendingResurfaceToast = false;
+        if (!this.injector) {
+          this.injector = new PostInjector();
+        }
+        this.injector.showToast('Bookmark resurfaced at top');
+      }
+    }
+  }
+
+  /**
+   * Check if current page is the bookmarks page
+   */
+  isBookmarksPage() {
+    return window.location.href.includes('/i/bookmarks');
+  }
+
+  /**
+   * Show reload toast notification
+   */
+  showReloadToast() {
+    // Ensure injector exists for toast functionality
+    if (!this.injector) {
+      this.injector = new PostInjector();
+    }
+    this.injector.showReloadToast('Bookmarks synced! Reload to start resurfacing.');
   }
 
   /**
@@ -428,7 +494,12 @@ class BookmarkResurfacerContent {
 
           // Show toast if this was a manual resurface and user is scrolled down
           if (forceReplace && wasScrolledDown) {
-            this.injector.showToast('Bookmark resurfaced at top');
+            if (document.hidden) {
+              // Tab is in background, queue toast for when it becomes visible
+              this.pendingResurfaceToast = true;
+            } else {
+              this.injector.showToast('Bookmark resurfaced at top');
+            }
           }
 
           chrome.runtime.sendMessage({
