@@ -24,7 +24,9 @@ function initElements() {
     setupScreen: document.getElementById('setupScreen'),
     successScreen: document.getElementById('successScreen'),
     emptyScreen: document.getElementById('emptyScreen'),
+    noBookmarksScreen: document.getElementById('noBookmarksScreen'),
     cooldownScreen: document.getElementById('cooldownScreen'),
+    allRetiredScreen: document.getElementById('allRetiredScreen'),
     settingsScreen: document.getElementById('settingsScreen'),
     mainHeader: document.getElementById('mainHeader'),
 
@@ -51,7 +53,9 @@ function hideAllScreens() {
   elements.setupScreen.classList.add('hidden');
   elements.successScreen.classList.add('hidden');
   elements.emptyScreen.classList.add('hidden');
+  elements.noBookmarksScreen.classList.add('hidden');
   elements.cooldownScreen.classList.add('hidden');
+  elements.allRetiredScreen.classList.add('hidden');
   elements.settingsScreen.classList.add('hidden');
 }
 
@@ -75,8 +79,16 @@ function showScreen(screenName) {
       elements.emptyScreen.classList.remove('hidden');
       elements.mainHeader.classList.remove('hidden');
       break;
+    case 'noBookmarks':
+      elements.noBookmarksScreen.classList.remove('hidden');
+      elements.mainHeader.classList.add('hidden');
+      break;
     case 'cooldown':
       elements.cooldownScreen.classList.remove('hidden');
+      elements.mainHeader.classList.remove('hidden');
+      break;
+    case 'allRetired':
+      elements.allRetiredScreen.classList.remove('hidden');
       elements.mainHeader.classList.remove('hidden');
       break;
     case 'settings':
@@ -281,16 +293,42 @@ async function handleResurfaceNow() {
         btn.disabled = false;
         btn.textContent = 'Resurface Now';
         showScreen('empty');
-      }, 1000);
+      }, 1500);
     } else {
-      // Injection failed for other reasons - show gentle message
-      btn.textContent = 'Not this time';
+      // Injection failed - handle based on reason
+      const reason = response?.reason || 'unknown';
+
+      // Some reasons should transition to a different screen
+      if (reason === 'no_eligible_bookmarks') {
+        btn.textContent = 'All in cooldown';
+        setTimeout(async () => {
+          const availability = await checkBookmarkAvailability();
+          if (availability && availability.inCooldownCount > 0) {
+            showCooldownScreen(availability);
+          } else if (availability && availability.eligibleCount === 0) {
+            showScreen('allRetired');
+          }
+        }, 1000);
+        return;
+      }
+
+      // Other reasons show specific button message
+      const messages = {
+        'session_cap': 'Session limit reached',
+        'already_visible': 'Already showing',
+        'already_injecting': 'Please wait...',
+        'injection_failed': 'Feed not found',
+        'no_bookmarks': 'No bookmarks',
+        'cooldown': 'Too soon'
+      };
+      btn.textContent = messages[reason] || 'Try again';
+
       setTimeout(async () => {
-        // Start cooldown countdown anyway so user can try again
+        // Start cooldown countdown so user can try again
         const cooldownUntil = Date.now() + MANUAL_RESURFACE_COOLDOWN_MS;
         await chrome.storage.local.set({ resurfaceCooldownUntil: cooldownUntil });
         startButtonCountdown(cooldownUntil);
-      }, 2500);
+      }, 2000);
     }
   } catch (error) {
     console.error('Error triggering resurface:', error);
@@ -375,6 +413,8 @@ function setupEventListeners() {
       const availability = await checkBookmarkAvailability();
       if (availability && availability.eligibleCount === 0 && availability.inCooldownCount > 0) {
         showCooldownScreen(availability);
+      } else if (availability && availability.eligibleCount === 0 && availability.inCooldownCount === 0) {
+        showScreen('allRetired');
       } else {
         showScreen('success');
         await checkCooldownState();
@@ -426,6 +466,7 @@ async function initPopup() {
 
   let bookmarkCount = 0;
   let needsRefresh = false;
+  let hasSynced = false;
   let hasXTabs = false;
 
   // Get bookmark count
@@ -445,6 +486,7 @@ async function initPopup() {
   try {
     const { lastAutoFetch } = await chrome.storage.local.get(['lastAutoFetch']);
     if (lastAutoFetch) {
+      hasSynced = true;
       const hoursSinceSync = (Date.now() - lastAutoFetch) / (1000 * 60 * 60);
       needsRefresh = hoursSinceSync > REFRESH_THRESHOLD_HOURS;
     }
@@ -466,9 +508,12 @@ async function initPopup() {
   }
 
   // Determine which screen to show
-  if (bookmarkCount === 0 || needsRefresh) {
-    // No bookmarks or stale sync - show setup
+  if (!hasSynced || needsRefresh) {
+    // Never synced or sync is stale - show setup
     showScreen('setup');
+  } else if (bookmarkCount === 0) {
+    // Synced recently but user has no bookmarks on X
+    showScreen('noBookmarks');
   } else if (!hasXTabs) {
     // Has bookmarks but no X tabs - show empty state
     showScreen('empty');
@@ -479,6 +524,9 @@ async function initPopup() {
     if (availability && availability.eligibleCount === 0 && availability.inCooldownCount > 0) {
       // All bookmarks in cooldown - show cooldown screen
       showCooldownScreen(availability);
+    } else if (availability && availability.eligibleCount === 0 && availability.inCooldownCount === 0) {
+      // All bookmarks retired (resurfaced 10+ times) - show all retired screen
+      showScreen('allRetired');
     } else {
       // Has available bookmarks - show success with interval
       elements.bookmarkCount.textContent = bookmarkCount;

@@ -233,6 +233,90 @@
       text-decoration: underline;
     }
 
+    /* No Bookmarks Screen */
+    #noBookmarksScreen {
+      padding-top: 32px;
+    }
+
+    .no-bookmarks-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .no-bookmarks-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f1419;
+      margin-bottom: 8px;
+    }
+
+    .no-bookmarks-message {
+      font-size: 14px;
+      color: #536471;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .no-bookmarks-button {
+      display: inline-block;
+      background: #0f1419;
+      color: white;
+      padding: 12px 28px;
+      border-radius: 24px;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background-color 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .no-bookmarks-button:hover {
+      background: #272c30;
+    }
+
+    /* All Retired Screen */
+    #allRetiredScreen {
+      padding-top: 16px;
+    }
+
+    .all-retired-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .all-retired-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f1419;
+      margin-bottom: 8px;
+    }
+
+    .all-retired-message {
+      font-size: 14px;
+      color: #536471;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .all-retired-button {
+      display: inline-block;
+      background: #1d9bf0;
+      color: white;
+      padding: 12px 28px;
+      border-radius: 24px;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background-color 0.2s;
+      border: none;
+      cursor: pointer;
+    }
+
+    .all-retired-button:hover {
+      background: #1a8cd8;
+    }
+
     /* Settings Screen */
     .settings-title {
       font-size: 18px;
@@ -391,6 +475,18 @@
     </button>
   </div>
 
+  <!-- No Bookmarks Screen (Synced but user has no bookmarks on X) -->
+  <div class="content hidden" id="noBookmarksScreen">
+    <div class="no-bookmarks-icon">🔍</div>
+    <div class="no-bookmarks-title">No Bookmarks Found</div>
+    <div class="no-bookmarks-message">
+      Save some posts on X first, then come back and we'll resurface them for you.
+    </div>
+    <a href="https://x.com" target="_blank" class="no-bookmarks-button">
+      Go to X
+    </a>
+  </div>
+
   <!-- Cooldown Screen (All bookmarks in cooldown) -->
   <div class="content hidden" id="cooldownScreen">
     <div class="cooldown-icon">⏳</div>
@@ -401,6 +497,18 @@
     </div>
     <a href="https://x.com/i/bookmarks" target="_blank" class="cooldown-sync-link">
       Scroll your bookmarks to sync more
+    </a>
+  </div>
+
+  <!-- All Retired Screen (All bookmarks resurfaced 10+ times) -->
+  <div class="content hidden" id="allRetiredScreen">
+    <div class="all-retired-icon">📚</div>
+    <div class="all-retired-title">Fully Resurfaced!</div>
+    <div class="all-retired-message">
+      All synced bookmarks have been resurfaced. Scroll your bookmarks page to sync more, or save new posts.
+    </div>
+    <a href="https://x.com/i/bookmarks" target="_blank" class="all-retired-button">
+      Sync New Bookmarks
     </a>
   </div>
 
@@ -430,7 +538,7 @@
   <!-- Footer -->
   <div class="footer">
     <span class="footer-name">X Bookmark Resurfacer</span>
-    <span>v1.1.0</span>
+    <span>v1.1.1</span>
   </div>
 
   <script src="popup.js"></script>
