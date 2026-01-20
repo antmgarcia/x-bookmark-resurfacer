@@ -62,10 +62,10 @@ class PostInjector {
       toast.classList.add('visible');
     });
 
-    // Auto-dismiss after 5 seconds
+    // Auto-dismiss after 10 seconds
     setTimeout(() => {
       this.hideToast(toast);
-    }, 5000);
+    }, 10000);
   }
 
   /**
@@ -104,10 +104,10 @@ class PostInjector {
       toast.classList.add('visible');
     });
 
-    // Auto-dismiss after 8 seconds (longer than regular toast)
+    // Auto-dismiss after 10 seconds
     setTimeout(() => {
       this.hideToast(toast);
-    }, 8000);
+    }, 10000);
   }
 
   /**
