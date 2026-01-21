@@ -19,6 +19,7 @@ class BookmarkResurfacerContent {
     this.urlCheckInterval = null; // Store interval ID for cleanup
     this.pendingSyncToast = false; // Flag for showing sync toast when tab becomes visible
     this.pendingResurfaceToast = false; // Flag for showing resurface toast when tab becomes visible
+    this.pendingGoToHomeToast = false; // Flag for showing go-to-home toast when tab becomes visible
     this.init();
   }
 
@@ -44,6 +45,9 @@ class BookmarkResurfacerContent {
 
     // Schedule auto-fetch
     this.scheduleAutoFetch();
+
+    // Check for pending bookmark to inject (from "Resurface Now" when no home feed was open)
+    setTimeout(() => this.checkAndInjectPendingBookmark(), 1500);
 
     log('Content script initialized');
   }
@@ -278,6 +282,17 @@ class BookmarkResurfacerContent {
           sendResponse({ success: true });
           break;
 
+        case MESSAGE_TYPES.NOTIFY_NO_HOME_FEED:
+          // Show toast directing user to home feed (where bookmark will be injected)
+          if (document.hidden) {
+            // Tab is not visible, queue the toast for when it becomes visible
+            this.pendingGoToHomeToast = true;
+          } else {
+            this.showGoToHomeToast();
+          }
+          sendResponse({ success: true });
+          break;
+
         default:
           log('Unknown message type:', message.type);
           sendResponse({ success: false, error: 'Unknown message type' });
@@ -319,6 +334,12 @@ class BookmarkResurfacerContent {
         this.removeResurfacedPosts();
         this.sessionResurfaceCount = 0;
         this.injectedBookmarks.clear();
+
+        // Check for pending bookmark when navigating TO home feed
+        if (this.isHomeFeed()) {
+          log('Navigated to home feed, checking for pending bookmark');
+          setTimeout(() => this.checkAndInjectPendingBookmark(), 1500);
+        }
       }
     }, 1000);
 
@@ -373,6 +394,11 @@ class BookmarkResurfacerContent {
         }
         this.injector.showToast('Bookmark resurfaced at top');
       }
+      // Show pending go-to-home toast
+      if (this.pendingGoToHomeToast) {
+        this.pendingGoToHomeToast = false;
+        this.showGoToHomeToast();
+      }
     }
   }
 
@@ -384,6 +410,37 @@ class BookmarkResurfacerContent {
   }
 
   /**
+   * Check if current page is the home feed
+   */
+  isHomeFeed() {
+    const url = window.location.href;
+    return /^https:\/\/(x|twitter)\.com\/(home)?(\?.*)?$/.test(url);
+  }
+
+  /**
+   * Check for and inject any pending bookmark (from no-home-feed scenario)
+   */
+  async checkAndInjectPendingBookmark() {
+    if (!this.isHomeFeed()) return;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: MESSAGE_TYPES.INJECT_PENDING_BOOKMARK
+      });
+
+      if (response && response.success && response.bookmark) {
+        log('Found pending bookmark to inject:', response.bookmark.id);
+        // Give timeline a moment to fully load, then inject (don't force replace)
+        setTimeout(async () => {
+          await this.injectBookmarksIntoFeed([response.bookmark], false);
+        }, 1500);
+      }
+    } catch (error) {
+      logError('Error checking pending bookmark:', error);
+    }
+  }
+
+  /**
    * Show reload toast notification
    */
   showReloadToast() {
@@ -392,6 +449,17 @@ class BookmarkResurfacerContent {
       this.injector = new PostInjector();
     }
     this.injector.showReloadToast('Bookmarks synced! Reload to start resurfacing.');
+  }
+
+  /**
+   * Show go-to-home toast notification
+   */
+  showGoToHomeToast() {
+    // Ensure injector exists for toast functionality
+    if (!this.injector) {
+      this.injector = new PostInjector();
+    }
+    this.injector.showGoToHomeToast('Bookmark resurfaced in your home feed');
   }
 
   /**

@@ -69,6 +69,48 @@ class PostInjector {
   }
 
   /**
+   * Show "Go to Home" toast notification
+   */
+  showGoToHomeToast(message = 'Bookmark resurfaced in your home feed') {
+    // Remove any existing toast
+    if (this.activeToast) {
+      this.activeToast.remove();
+      this.activeToast = null;
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'resurfacer-toast';
+
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'resurfacer-toast-message';
+    messageSpan.textContent = message;
+
+    const goHomeButton = document.createElement('button');
+    goHomeButton.className = 'resurfacer-toast-button';
+    goHomeButton.textContent = 'Go to Home';
+    goHomeButton.addEventListener('click', () => {
+      window.location.href = 'https://x.com/home';
+    });
+
+    toast.appendChild(messageSpan);
+    toast.appendChild(goHomeButton);
+    document.body.appendChild(toast);
+
+    this.activeToast = toast;
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      toast.classList.add('visible');
+    });
+
+    // Auto-dismiss after 10 seconds
+    setTimeout(() => {
+      this.hideToast(toast);
+    }, 10000);
+  }
+
+  /**
    * Show reload toast notification with "Reload" button
    */
   showReloadToast(message = 'Bookmarks synced! Reload to start resurfacing.') {

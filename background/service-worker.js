@@ -318,6 +318,37 @@ async function resurfaceBookmarks(forceReplace = false) {
 
     if (homeFeedTabs.length === 0) {
       log('No X/Twitter home feed tabs found');
+
+      // Check if there are other X tabs (post-dedicated pages) to notify
+      const otherXTabs = allTabs.filter(tab =>
+        tab.id && !tab.discarded && tab.status === 'complete'
+      );
+
+      if (otherXTabs.length > 0 && forceReplace) {
+        // User clicked "Resurface Now" but no home feed open
+        // Select a bookmark and store it as pending, then notify other tabs
+        const pendingBookmarks = await storageManager.getRandomBookmarks(1);
+
+        if (pendingBookmarks.length > 0) {
+          const pendingBookmark = pendingBookmarks[0];
+          await chrome.storage.local.set({ pendingResurfaceBookmark: pendingBookmark });
+          log('Stored pending bookmark:', pendingBookmark.id);
+
+          // Notify other X tabs to show "go to home" toast
+          for (const tab of otherXTabs) {
+            try {
+              await chrome.tabs.sendMessage(tab.id, {
+                type: MESSAGE_TYPES.NOTIFY_NO_HOME_FEED
+              });
+            } catch {
+              // Tab might not have content script ready
+            }
+          }
+
+          return { injected: false, reason: 'no_home_feed_notified', pendingBookmarkId: pendingBookmark.id };
+        }
+      }
+
       return { injected: false, reason: 'no_tabs' };
     }
 
@@ -368,6 +399,35 @@ async function resurfaceBookmarks(forceReplace = false) {
 
     if (successCount > 0) {
       log(`Injection successful: ${successCount}/${homeFeedTabs.length} tabs`);
+
+      // If this was a manual resurface, notify non-home-feed tabs so they see a toast
+      if (forceReplace) {
+        const nonHomeFeedTabs = allTabs.filter(tab => {
+          if (!tab.id || tab.discarded || tab.status !== 'complete') return false;
+          // Exclude home feed tabs (they already got the injection)
+          const url = tab.url || '';
+          return !/^https:\/\/(x|twitter)\.com\/(home)?(\?.*)?$/.test(url);
+        });
+
+        if (nonHomeFeedTabs.length > 0) {
+          // Store the bookmark as pending so if user navigates to home feed, they'll see it
+          // (The existing home feed tabs already have it, but user might open a new one)
+          const bookmarkForPending = bookmarks[0];
+          await chrome.storage.local.set({ pendingResurfaceBookmark: bookmarkForPending });
+          log('Stored pending bookmark for non-home-feed tabs:', bookmarkForPending.id);
+
+          for (const tab of nonHomeFeedTabs) {
+            try {
+              await chrome.tabs.sendMessage(tab.id, {
+                type: MESSAGE_TYPES.NOTIFY_NO_HOME_FEED
+              });
+            } catch {
+              // Tab might not have content script ready
+            }
+          }
+        }
+      }
+
       return { injected: true, tabsInjected: successCount };
     } else {
       log('Injection failed on all tabs:', lastFailReason || 'unknown');
@@ -480,6 +540,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         case MESSAGE_TYPES.GET_BOOKMARK_AVAILABILITY:
           const availability = await storageManager.getBookmarkAvailability();
           sendResponse({ success: true, ...availability });
+          break;
+
+        case MESSAGE_TYPES.INJECT_PENDING_BOOKMARK:
+          // Check if there's a pending bookmark to inject
+          const { pendingResurfaceBookmark } = await chrome.storage.local.get(['pendingResurfaceBookmark']);
+          if (pendingResurfaceBookmark) {
+            // Don't clear immediately - allow multiple tabs to use it
+            // It will be cleared/replaced when next "Resurface Now" is triggered
+            log('Returning pending bookmark:', pendingResurfaceBookmark.id);
+            sendResponse({ success: true, bookmark: pendingResurfaceBookmark });
+          } else {
+            sendResponse({ success: false, reason: 'no_pending' });
+          }
           break;
 
         case MESSAGE_TYPES.NOTIFY_SYNC:

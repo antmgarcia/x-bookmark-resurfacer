@@ -1,5 +1,5 @@
 /**
- * X Bookmark Resurfacer - Popup Script (v1.1)
+ * X Bookmark Resurfacer - Popup Script (v1.1.2)
  * Controls the extension popup UI with interval display, settings, and manual trigger
  */
 
@@ -286,6 +286,13 @@ async function handleResurfaceNow() {
           startButtonCountdown(cooldownUntil);
         }
       }, 1000);
+    } else if (response && !response.success && response.reason === 'no_home_feed_notified') {
+      // No home feed tabs, but other X tabs were notified
+      btn.textContent = 'Waiting in Home';
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Resurface Now';
+      }, 3000);
     } else if (response && !response.success && response.reason === 'no_tabs') {
       // No X tabs found
       btn.textContent = 'No X Tab';
