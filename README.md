@@ -6,6 +6,9 @@ A Chrome extension that automatically resurfaces your X/Twitter bookmarks in you
 
 - **Automatic Bookmark Sync**: Captures your bookmarks when you visit the X bookmarks page
 - **Smart Resurfacing**: Periodically injects bookmarked posts into your home feed
+- **Customizable Interval**: Choose how often bookmarks appear (10min to 2 hours)
+- **Multi-Tab Support**: Resurfaces across all open home feed tabs simultaneously
+- **Toast Notifications**: X-style toasts notify you when bookmarks are synced or resurfaced
 - **Non-Intrusive**: Respects your browsing with cooldowns and session limits
 - **Native Look & Feel**: Resurfaced posts match X's design with a subtle "Resurfaced" indicator
 - **Dark Mode Support**: Automatically adapts to X's light and dark themes
@@ -35,10 +38,11 @@ The extension intercepts X's bookmark API responses when you visit your bookmark
 
 ### Resurfacing Logic
 - Bookmarks are stored locally in IndexedDB
-- Every 5 minutes, the extension checks if it can show a resurfaced post
+- At your chosen interval (default: 20 minutes), the extension shows a resurfaced post
 - Posts appear at the top of your feed with a blue left border and "Resurfaced" chip
 - Each bookmark has a 1-hour cooldown after being shown
 - Maximum 5 resurfaced posts per browser session
+- Use the "Resurface Now" button to manually trigger a resurface anytime
 
 ### Refresh Indicator
 - A red notification dot appears on the extension icon when:
@@ -55,14 +59,15 @@ The extension intercepts X's bookmark API responses when you visit your bookmark
 
 ## Configuration
 
-The extension works out of the box with sensible defaults:
+The extension works out of the box with sensible defaults. Access settings via the gear icon in the popup.
 
-| Setting | Value | Description |
-|---------|-------|-------------|
-| Alarm Interval | 5 minutes | How often to check for resurfacing |
-| Session Limit | 5 posts | Max resurfaced posts per session |
-| Cooldown | 1 hour | Time before same bookmark can reappear |
-| Refresh Threshold | 24 hours | When to show refresh notification |
+| Setting | Default | Options | Description |
+|---------|---------|---------|-------------|
+| Resurface Interval | 20 minutes | 10min, 20min, 30min, 1hr, 2hr | How often bookmarks appear in your feed |
+| Session Limit | 5 posts | - | Max resurfaced posts per browser session |
+| Bookmark Cooldown | 1 hour | - | Time before same bookmark can reappear |
+| Refresh Threshold | 24 hours | - | When to show refresh notification dot |
+| Max Resurface Count | 10 times | - | Bookmark retires after being shown 10 times |
 
 ## File Structure
 

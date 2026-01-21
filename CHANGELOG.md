@@ -2,26 +2,36 @@
 
 All notable changes to X Bookmark Resurfacer will be documented in this file.
 
-## [1.1.2] - 2026-01-19
+## [1.1.2] - 2026-01-21
 
 ### Added
 - **Sync Notification Toast** - Other X tabs now show a "Bookmarks synced! Reload to start resurfacing." toast when bookmarks are synced from the bookmarks page
 - **Multi-Tab Resurface** - "Resurface Now" button now injects different bookmarks into ALL open X home feed tabs simultaneously
-- **Background Tab Toast Support** - All toasts (sync and resurface) queue for background tabs and appear when user switches to them
+- **Background Tab Toast Support** - All toasts (sync, resurface, go-to-home) queue for background tabs and appear when user switches to them
+- **"Go to Home" Toast** - When clicking "Resurface Now" from a post-dedicated page, shows "Bookmark resurfaced in your home feed" toast with "Go to Home" button
+- **Pending Bookmark Storage** - Bookmarks are stored for deferred injection when navigating to home feed from post-dedicated pages
 
 ### Changed
 - "Resurface Now" behavior improved: injects into all home feed tabs instead of just one
 - Toast notifications are now visibility-aware and won't be missed on background tabs
+- Toast duration increased from 5s/8s to 10 seconds for better visibility
+- Pending bookmark injection delay reduced from 3s to 1.5s for faster UX
+- Popup button shows "Waiting in Home" when bookmark is queued for home feed
 
 ### Removed
 - Removed unused "Too soon" error message (dead code)
+- Removed unused `previousUrl` variable (code cleanup)
 
 ### Technical
-- Added `NOTIFY_SYNC` and `SYNC_COMPLETE` message types for cross-tab communication
+- Added `NOTIFY_SYNC`, `SYNC_COMPLETE`, `NOTIFY_NO_HOME_FEED`, and `INJECT_PENDING_BOOKMARK` message types
 - Added visibility change listener to handle background tab notifications
 - Service worker now broadcasts sync events to all open X tabs
+- Service worker notifies non-home-feed tabs when manual resurface occurs
 - `resurfaceBookmarks()` now fetches multiple bookmarks when needed for multi-tab injection
-- Added `pendingResurfaceToast` flag for deferred toast display
+- Added `pendingResurfaceToast` and `pendingGoToHomeToast` flags for deferred toast display
+- Added `isHomeFeed()` helper method for URL detection
+- Added `checkAndInjectPendingBookmark()` for deferred bookmark injection
+- Added `showGoToHomeToast()` method in PostInjector
 
 ## [1.1.1] - 2026-01-17
 
