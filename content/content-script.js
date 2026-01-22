@@ -20,6 +20,9 @@ class BookmarkResurfacerContent {
     this.pendingSyncToast = false; // Flag for showing sync toast when tab becomes visible
     this.pendingResurfaceToast = false; // Flag for showing resurface toast when tab becomes visible
     this.pendingGoToHomeToast = false; // Flag for showing go-to-home toast when tab becomes visible
+    this.hasShownScrollToast = false; // Flag to show "scroll for more" toast only once per page
+    this.acknowledgedSyncTimestamp = 0; // Track which sync we've shown toast for (per-tab)
+    this.scriptInitTime = Date.now(); // Track when this content script started
     this.init();
   }
 
@@ -48,6 +51,9 @@ class BookmarkResurfacerContent {
 
     // Check for pending bookmark to inject (from "Resurface Now" when no home feed was open)
     setTimeout(() => this.checkAndInjectPendingBookmark(), 1500);
+
+    // Check for recent sync (handles extension reload scenario)
+    setTimeout(() => this.checkForRecentSync(), 2000);
 
     log('Content script initialized');
   }
@@ -214,7 +220,14 @@ class BookmarkResurfacerContent {
             bookmarks: tweets
           });
 
-          log(`Bookmarks stored successfully! Count: ${response?.count || tweets.length}`);
+          const totalCount = response?.count || tweets.length;
+          log(`Bookmarks stored successfully! Count: ${totalCount}`);
+
+          // On bookmarks page, show "scroll for more" toast (only once)
+          if (this.isBookmarksPage() && !this.hasShownScrollToast) {
+            this.hasShownScrollToast = true;
+            this.showScrollForMoreToast(totalCount);
+          }
 
           // Notify other X tabs about the sync
           try {
@@ -399,6 +412,8 @@ class BookmarkResurfacerContent {
         this.pendingGoToHomeToast = false;
         this.showGoToHomeToast();
       }
+      // Check for recent sync (handles extension reload or missed SYNC_COMPLETE)
+      this.checkForRecentSync();
     }
   }
 
@@ -441,6 +456,51 @@ class BookmarkResurfacerContent {
   }
 
   /**
+   * Check for recent sync and show toast if needed
+   * Fallback for cases where scripting API injection didn't work
+   * Only shows toast if sync happened AFTER this tab was opened
+   */
+  async checkForRecentSync() {
+    // Skip if on bookmarks page (that's where sync happens)
+    if (this.isBookmarksPage()) return;
+
+    try {
+      const { lastAutoFetch, syncToastAcknowledgedAt } = await chrome.storage.local.get(['lastAutoFetch', 'syncToastAcknowledgedAt']);
+      if (!lastAutoFetch) return;
+
+      // Skip if sync happened BEFORE this tab was opened (new tab after sync)
+      if (lastAutoFetch < this.scriptInitTime) {
+        this.acknowledgedSyncTimestamp = lastAutoFetch;
+        return;
+      }
+
+      // Skip if the sync was already acknowledged (user clicked Reload on toast)
+      if (syncToastAcknowledgedAt && lastAutoFetch <= syncToastAcknowledgedAt) {
+        this.acknowledgedSyncTimestamp = lastAutoFetch;
+        return;
+      }
+
+      // Check if this is a sync we haven't acknowledged yet
+      if (lastAutoFetch > this.acknowledgedSyncTimestamp) {
+        // Only show toast for syncs in the last 5 minutes
+        const syncAge = Date.now() - lastAutoFetch;
+        const fiveMinutes = 5 * 60 * 1000;
+
+        if (syncAge < fiveMinutes) {
+          log('Recent sync detected, showing reload toast');
+          this.acknowledgedSyncTimestamp = lastAutoFetch;
+          this.showReloadToast();
+        } else {
+          // Sync is older, just acknowledge it silently
+          this.acknowledgedSyncTimestamp = lastAutoFetch;
+        }
+      }
+    } catch (error) {
+      // Extension context may be invalid, ignore
+    }
+  }
+
+  /**
    * Show reload toast notification
    */
   showReloadToast() {
@@ -460,6 +520,17 @@ class BookmarkResurfacerContent {
       this.injector = new PostInjector();
     }
     this.injector.showGoToHomeToast('Bookmark resurfaced in your home feed');
+  }
+
+  /**
+   * Show "scroll for more" toast on bookmarks page
+   */
+  showScrollForMoreToast(count) {
+    // Ensure injector exists for toast functionality
+    if (!this.injector) {
+      this.injector = new PostInjector();
+    }
+    this.injector.showScrollForMoreToast(count);
   }
 
   /**

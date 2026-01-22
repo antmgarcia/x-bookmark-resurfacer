@@ -132,11 +132,57 @@ class PostInjector {
     reloadButton.className = 'resurfacer-toast-button';
     reloadButton.textContent = 'Reload';
     reloadButton.addEventListener('click', () => {
-      window.location.reload();
+      // Mark this sync as acknowledged to prevent duplicate toast after reload
+      chrome.storage.local.set({ syncToastAcknowledgedAt: Date.now() }).then(() => {
+        window.location.reload();
+      });
     });
 
     toast.appendChild(messageSpan);
     toast.appendChild(reloadButton);
+    document.body.appendChild(toast);
+
+    this.activeToast = toast;
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+      toast.classList.add('visible');
+    });
+
+    // Auto-dismiss after 10 seconds
+    setTimeout(() => {
+      this.hideToast(toast);
+    }, 10000);
+  }
+
+  /**
+   * Show "scroll for more" toast on bookmarks page
+   */
+  showScrollForMoreToast(count) {
+    // Remove any existing toast
+    if (this.activeToast) {
+      this.activeToast.remove();
+      this.activeToast = null;
+    }
+
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'resurfacer-toast';
+
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'resurfacer-toast-message';
+    messageSpan.textContent = `${count} bookmarks synced`;
+
+    const scrollButton = document.createElement('button');
+    scrollButton.className = 'resurfacer-toast-button';
+    scrollButton.textContent = 'Scroll for more';
+    scrollButton.addEventListener('click', () => {
+      window.scrollBy({ top: 25000, behavior: 'smooth' });
+      this.hideToast(toast);
+    });
+
+    toast.appendChild(messageSpan);
+    toast.appendChild(scrollButton);
     document.body.appendChild(toast);
 
     this.activeToast = toast;

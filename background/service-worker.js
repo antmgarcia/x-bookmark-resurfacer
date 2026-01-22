@@ -518,7 +518,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           );
           await chrome.storage.local.set({ resurfaceInterval: newInterval });
           log(`Resurface interval set to ${newInterval} minutes`);
-          // Don't reset current timer - apply on next cycle per PRD
+          // Trigger a resurface in 3 minutes, then new interval applies
+          await createResurfaceAlarm(3);
           sendResponse({ success: true, interval: newInterval });
           break;
 
@@ -561,20 +562,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             url: ['*://x.com/*', '*://twitter.com/*']
           });
 
-          for (const tab of xTabs) {
-            // Skip the tab that sent the notification
-            if (tab.id === sender.tab?.id) continue;
-            // Skip discarded or incomplete tabs
-            if (!tab.id || tab.discarded || tab.status !== 'complete') continue;
+          // Filter tabs that should receive the toast
+          const targetTabs = xTabs.filter(tab => {
+            if (tab.id === sender.tab?.id) return false; // Skip sender
+            if (!tab.id || tab.discarded || tab.status !== 'complete') return false;
+            if (tab.url?.includes('/i/bookmarks')) return false; // Skip bookmarks page
+            return true;
+          });
 
+          log(`Injecting sync toast into ${targetTabs.length} tabs`);
+
+          // Inject into all tabs in parallel
+          await Promise.all(targetTabs.map(async (tab) => {
             try {
-              await chrome.tabs.sendMessage(tab.id, {
-                type: MESSAGE_TYPES.SYNC_COMPLETE
+              await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: showSyncToast
               });
-            } catch {
-              // Tab might not have content script ready, skip silently
+              log(`Injected sync toast into tab ${tab.id}`);
+            } catch (err) {
+              log(`Could not inject toast into tab ${tab.id}:`, err.message);
             }
-          }
+          }));
+
           sendResponse({ success: true });
           break;
 
@@ -635,6 +645,105 @@ globalThis.checkAlarm = async function() {
     return { exists: false, created: true };
   }
 };
+
+/**
+ * Function to inject into tabs to show sync toast
+ * Must be self-contained (no external dependencies)
+ * Visibility-aware: waits to show until tab is visible
+ */
+function showSyncToast() {
+  // Check if toast already exists or is pending
+  if (document.querySelector('.resurfacer-sync-toast') || window._resurfacerSyncToastPending) return;
+
+  function displayToast() {
+    // Double-check toast doesn't already exist
+    if (document.querySelector('.resurfacer-sync-toast')) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'resurfacer-sync-toast';
+    toast.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1d9bf0;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: transform 0.3s ease;
+    `;
+
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = 'Bookmarks synced! Reload to start resurfacing.';
+
+    const reloadButton = document.createElement('button');
+    reloadButton.textContent = 'Reload';
+    reloadButton.style.cssText = `
+      background: white;
+      color: #1d9bf0;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    `;
+    reloadButton.addEventListener('mouseenter', () => {
+      reloadButton.style.background = '#e8f5fd';
+    });
+    reloadButton.addEventListener('mouseleave', () => {
+      reloadButton.style.background = 'white';
+    });
+    reloadButton.addEventListener('click', () => {
+      // Mark this sync as acknowledged to prevent duplicate toast after reload
+      chrome.storage.local.set({ syncToastAcknowledgedAt: Date.now() }).then(() => {
+        window.location.reload();
+      });
+    });
+
+    toast.appendChild(messageSpan);
+    toast.appendChild(reloadButton);
+    document.body.appendChild(toast);
+
+    // Animate in
+    requestAnimationFrame(() => {
+      toast.style.transform = 'translateX(-50%) translateY(0)';
+    });
+
+    // Auto-dismiss after 10 seconds
+    setTimeout(() => {
+      toast.style.transform = 'translateX(-50%) translateY(100px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 10000);
+
+    window._resurfacerSyncToastPending = false;
+  }
+
+  // If tab is visible, show immediately
+  if (!document.hidden) {
+    displayToast();
+  } else {
+    // Tab is hidden - wait for it to become visible
+    window._resurfacerSyncToastPending = true;
+    const onVisible = () => {
+      if (!document.hidden) {
+        document.removeEventListener('visibilitychange', onVisible);
+        displayToast();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+  }
+}
 
 // Self-initialize on script load (handles service worker wake-up)
 ensureInitialized().catch(err => logError('Init error:', err));
