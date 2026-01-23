@@ -12,7 +12,9 @@ All notable changes to X Bookmark Resurfacer will be documented in this file.
 - **Pending Bookmark Storage** - Bookmarks are stored for deferred injection when navigating to home feed from post-dedicated pages
 - **"Scroll for more" Toast** - On bookmarks page, shows synced count with button to scroll down and load more bookmarks
 - **Cross-Tab Sync via Scripting API** - Sync notifications work even with stale content scripts after extension reload
+- **Quick Resurface on Interval Change** - Changing interval triggers a 3-minute resurface before new interval applies
 - **CLAUDE.md Documentation** - Project documentation for Claude Code
+- **SCENARIOS.md Documentation** - Comprehensive use cases and edge cases documentation
 
 ### Changed
 - "Resurface Now" behavior improved: injects into all home feed tabs instead of just one
@@ -22,6 +24,12 @@ All notable changes to X Bookmark Resurfacer will be documented in this file.
 - Popup button shows "Waiting in Home" when bookmark is queued for home feed
 - **Unified Toast UI** - All toasts now use consistent blue background (#1d9bf0) with white pill-shaped buttons and hover effects
 - Sync toast only appears on tabs that were open during sync (not new tabs opened after)
+- **Bookmark count shows total** - Sync toast now shows total bookmarks in database, not just batch count
+
+### Fixed
+- Fixed duplicate toast appearing after clicking "Reload" on sync toast
+- Fixed sync toast appearing on new tabs opened after sync completed
+- Fixed bookmark count showing batch size (20) instead of total synced count
 
 ### Removed
 - Removed unused "Too soon" error message (dead code)
@@ -41,6 +49,8 @@ All notable changes to X Bookmark Resurfacer will be documented in this file.
 - Added `syncToastAcknowledgedAt` storage key to prevent duplicate toasts after reload
 - Added `scriptInitTime` tracking to prevent toasts on tabs opened after sync
 - Self-contained `showSyncToast()` function injected into tabs for stale script compatibility
+- `saveBookmarks()` now returns total database count instead of batch count
+- Interval change triggers 3-minute alarm before applying new interval
 
 ## [1.1.1] - 2026-01-17
 

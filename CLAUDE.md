@@ -49,6 +49,7 @@ Communication uses `MESSAGE_TYPES` constants for all cross-context messaging:
 - IndexedDB wrapper for bookmark persistence
 - Tracks resurface stats (count, cooldowns, retirement)
 - Provides eligibility filtering for bookmark selection
+- `saveBookmarks()` returns total database count (not batch count) for accurate toast display
 
 **Content Script** (`content/content-script.js`)
 - Main orchestrator on X pages
@@ -87,6 +88,7 @@ Defined in `TIMING_CONFIG` and `INJECTION_CONFIG`:
 - Per-bookmark cooldown: 1 hour
 - Max resurface count: 10 per bookmark (then retired)
 - Session limit: 5 resurfaced posts
+- Interval change: Triggers 3-minute quick resurface, then new interval applies
 
 ### Multi-Tab Support
 - Sync notifications broadcast to all X tabs via `chrome.scripting.executeScript`
@@ -102,6 +104,9 @@ Key chrome.storage.local entries:
 - `bookmarksQueryId`: Cached GraphQL query ID for bookmarks endpoint
 - `queryIdTimestamp`: When query ID was cached (7-day expiry)
 - `pendingResurfaceBookmark`: Bookmark waiting to be injected when user navigates to home feed
+- `resurfaceInterval`: User's chosen interval in minutes (default: 20)
+- `bookmarkCount`: Total synced bookmarks in database
+- `enabled`: Extension on/off state
 
 ## Release Process
 

@@ -74,9 +74,12 @@ class StorageManager {
         request.onsuccess = () => savedCount++;
       });
 
-      transaction.oncomplete = () => {
-        log(`Saved ${savedCount} bookmarks`);
-        resolve(savedCount);
+      transaction.oncomplete = async () => {
+        log(`Saved ${savedCount} bookmarks in this batch`);
+        // Return total count in database, not just batch count
+        const totalCount = await this.getBookmarkCount();
+        log(`Total bookmarks in database: ${totalCount}`);
+        resolve(totalCount);
       };
 
       transaction.onerror = () => {

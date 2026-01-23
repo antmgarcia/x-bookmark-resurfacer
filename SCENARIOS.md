@@ -9,12 +9,14 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 ### 1.1 First-Time Sync
 - **Scenario**: User visits `/i/bookmarks` for the first time
 - **Behavior**: API interceptor captures bookmarks, stores in IndexedDB, shows "XX bookmarks synced" toast with "Scroll for more" button
-- **Toast**: Blue toast with bookmark count and scroll button
+- **Toast**: Blue toast with **total** bookmark count (not batch count) and scroll button
+- **Count**: Displays total bookmarks in database, updates as user scrolls and more are captured
 
 ### 1.2 Scroll for More Bookmarks
 - **Scenario**: User clicks "Scroll for more" on bookmarks page
 - **Behavior**: Page scrolls down 25,000px to trigger X's infinite scroll, loading more bookmarks
-- **Note**: Each scroll typically loads ~20 more bookmarks (X's page size)
+- **Batch Size**: X returns ~20 bookmarks per API page
+- **Toast**: Only shows once per page visit (first batch), displays total in database
 
 ### 1.3 Subsequent Syncs
 - **Scenario**: User returns to bookmarks page after initial sync
@@ -243,6 +245,12 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 - **Scenario**: Alarm fires but resurfaced post already on page
 - **Behavior**: Skipped (unless force replace via "Resurface Now")
 - **Prevents**: Multiple resurfaced posts stacking up
+
+### 8.11 Bookmark Count Accuracy
+- **Scenario**: User visits bookmarks page, API returns bookmarks in batches of ~20
+- **Behavior**: Toast shows **total** bookmarks in database, not batch count
+- **Technical**: `saveBookmarks()` calls `getBookmarkCount()` after saving to get accurate total
+- **Prevents**: Confusing "20 bookmarks synced" when user has 100+ bookmarks
 
 ---
 
