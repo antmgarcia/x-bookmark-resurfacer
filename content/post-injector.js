@@ -589,10 +589,9 @@ class PostInjector {
   }
 
   /**
-   * Detect dark mode - check X's actual background color
+   * Detect theme mode - returns 'light', 'dim', or 'dark'
    */
-  isDarkMode() {
-    // Most reliable: check the actual body background color
+  getThemeMode() {
     const bg = getComputedStyle(document.body).backgroundColor;
     if (bg) {
       const rgb = bg.match(/\d+/g);
@@ -600,18 +599,44 @@ class PostInjector {
         const r = parseInt(rgb[0]);
         const g = parseInt(rgb[1]);
         const b = parseInt(rgb[2]);
+
         // X light mode: white (#fff = 255,255,255)
-        // X dark mode: black (#000 = 0,0,0) or dim (#15202b = 21,32,43)
-        // Check if it's dark (all values under 128)
-        const isDark = r < 128 && g < 128 && b < 128;
-        log(`Body background RGB: ${r},${g},${b} - isDark: ${isDark}`);
-        return isDark;
+        if (r > 200 && g > 200 && b > 200) {
+          log(`Body background RGB: ${r},${g},${b} - theme: light`);
+          return 'light';
+        }
+
+        // X dim mode: dark blue (#15202b = 21,32,43)
+        // Check if blue component is noticeably higher than others
+        if (r < 50 && g < 50 && b > 30 && b < 60) {
+          log(`Body background RGB: ${r},${g},${b} - theme: dim`);
+          return 'dim';
+        }
+
+        // X dark mode: black (#000 = 0,0,0)
+        if (r < 30 && g < 30 && b < 30) {
+          log(`Body background RGB: ${r},${g},${b} - theme: dark`);
+          return 'dark';
+        }
+
+        // Fallback for any other dark-ish color
+        if (r < 128 && g < 128 && b < 128) {
+          log(`Body background RGB: ${r},${g},${b} - theme: dark (fallback)`);
+          return 'dark';
+        }
       }
     }
 
-    // Fallback: default to light mode
-    log('Could not detect theme, defaulting to light mode');
-    return false;
+    log('Could not detect theme, defaulting to light');
+    return 'light';
+  }
+
+  /**
+   * Detect dark mode - check X's actual background color
+   */
+  isDarkMode() {
+    const theme = this.getThemeMode();
+    return theme === 'dark' || theme === 'dim';
   }
 
   /**
@@ -636,13 +661,15 @@ class PostInjector {
     }
 
     const tweetUrl = `https://x.com/${authorHandle}/status/${bookmark.id}`;
-    const isDark = this.isDarkMode();
-    log(`Dark mode detected: ${isDark}`);
+    const themeMode = this.getThemeMode();
+    const isDark = themeMode === 'dark' || themeMode === 'dim';
+    log(`Theme mode: ${themeMode}, isDark: ${isDark}`);
 
     const textColor = isDark ? '#e7e9ea' : '#0f1419';
     const secondaryColor = isDark ? '#71767b' : '#536471';
     const borderColor = isDark ? '#2f3336' : '#eff3f4';
-    const bgColor = isDark ? '#000000' : '#ffffff';
+    // Use actual background color to support Light, Dim (#15202b), and Dark (#000000)
+    const bgColor = getComputedStyle(document.body).backgroundColor || (isDark ? '#000000' : '#ffffff');
     log(`Using colors - bg: ${bgColor}, text: ${textColor}`);
 
     const avatarUrl = bookmark.author?.profile_image_url ||
@@ -654,8 +681,15 @@ class PostInjector {
     cell.setAttribute('data-testid', 'cellInnerDiv');
     cell.setAttribute('data-resurfaced-inner', 'true');
 
-    // Soft gradient from left (Twitter blue at 5% opacity) fading to transparent
-    const gradientBg = `linear-gradient(90deg, rgba(29, 155, 240, 0.05) 0%, rgba(29, 155, 240, 0.02) 50%, transparent 100%)`;
+    // Soft gradient from left (Twitter blue) fading to transparent
+    // Light: subtle, Dim: intermediate, Dark: stronger for visibility
+    const gradientOpacities = {
+      light: { start: 0.05, mid: 0.02 },
+      dim: { start: 0.08, mid: 0.04 },
+      dark: { start: 0.12, mid: 0.06 }
+    };
+    const { start: gradientOpacity, mid: gradientMidOpacity } = gradientOpacities[themeMode];
+    const gradientBg = `linear-gradient(90deg, rgba(29, 155, 240, ${gradientOpacity}) 0%, rgba(29, 155, 240, ${gradientMidOpacity}) 50%, transparent 100%)`;
 
     cell.style.cssText = `
       background: ${gradientBg}, ${bgColor} !important;
@@ -716,14 +750,22 @@ class PostInjector {
 
     const chipSpan = document.createElement('span');
     chipSpan.textContent = 'Resurfaced';
+    // Theme-based chip styling: Light (subtle), Dim (intermediate), Dark (stronger)
+    const chipStyles = {
+      light: { bg: 'rgba(29, 155, 240, 0.1)', color: '#1d9bf0', border: 'none' },
+      dim: { bg: 'rgba(29, 155, 240, 0.18)', color: '#8ecdf8', border: '1px solid rgba(29, 155, 240, 0.3)' },
+      dark: { bg: 'rgba(29, 155, 240, 0.25)', color: '#8ecdf8', border: '1px solid rgba(29, 155, 240, 0.4)' }
+    };
+    const { bg: chipBg, color: chipColor, border: chipBorder } = chipStyles[themeMode];
     chipSpan.style.cssText = `
       margin-left: 8px;
       padding: 2px 8px;
-      background: rgba(29, 155, 240, 0.1);
+      background: ${chipBg};
+      border: ${chipBorder};
       border-radius: 4px;
       font-size: 12px;
       font-weight: 500;
-      color: #1d9bf0;
+      color: ${chipColor};
     `;
 
     headerDiv.appendChild(nameSpan);
