@@ -682,14 +682,15 @@ class PostInjector {
     cell.setAttribute('data-resurfaced-inner', 'true');
 
     // Soft gradient from left (Twitter blue) fading to transparent
-    // Light: subtle, Dim: intermediate, Dark: stronger for visibility
-    const gradientOpacities = {
-      light: { start: 0.05, mid: 0.02 },
-      dim: { start: 0.08, mid: 0.04 },
-      dark: { start: 0.12, mid: 0.06 }
+    // Light: subtle & narrower, Dim: intermediate, Dark: stronger for visibility
+    const gradientSettings = {
+      light: { start: 0.05, mid: 0.02, width: 40 },
+      dim: { start: 0.08, mid: 0.04, width: 50 },
+      dark: { start: 0.12, mid: 0.06, width: 50 }
     };
-    const { start: gradientOpacity, mid: gradientMidOpacity } = gradientOpacities[themeMode];
-    const gradientBg = `linear-gradient(90deg, rgba(29, 155, 240, ${gradientOpacity}) 0%, rgba(29, 155, 240, ${gradientMidOpacity}) 50%, transparent 100%)`;
+    const { start: gradientOpacity, mid: gradientMidOpacity, width: gradientWidth } = gradientSettings[themeMode];
+    const midPoint = gradientWidth / 2;
+    const gradientBg = `linear-gradient(90deg, rgba(29, 155, 240, ${gradientOpacity}) 0%, rgba(29, 155, 240, ${gradientMidOpacity}) ${midPoint}%, transparent ${gradientWidth}%)`;
 
     cell.style.cssText = `
       background: ${gradientBg}, ${bgColor} !important;
