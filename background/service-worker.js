@@ -547,9 +547,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // Check if there's a pending bookmark to inject
           const { pendingResurfaceBookmark } = await chrome.storage.local.get(['pendingResurfaceBookmark']);
           if (pendingResurfaceBookmark) {
-            // Don't clear immediately - allow multiple tabs to use it
-            // It will be cleared/replaced when next "Resurface Now" is triggered
-            log('Returning pending bookmark:', pendingResurfaceBookmark.id);
+            // Clear immediately to prevent re-injection on page reload
+            await chrome.storage.local.remove('pendingResurfaceBookmark');
+            log('Returning and clearing pending bookmark:', pendingResurfaceBookmark.id);
             sendResponse({ success: true, bookmark: pendingResurfaceBookmark });
           } else {
             sendResponse({ success: false, reason: 'no_pending' });
@@ -706,9 +706,12 @@ function showSyncToast() {
     });
     reloadButton.addEventListener('click', () => {
       // Mark this sync as acknowledged to prevent duplicate toast after reload
-      chrome.storage.local.set({ syncToastAcknowledgedAt: Date.now() }).then(() => {
-        window.location.reload();
-      });
+      chrome.storage.local.set({ syncToastAcknowledgedAt: Date.now() })
+        .catch(() => {})
+        .finally(() => {
+          // Hard reload bypassing cache
+          window.location.href = window.location.href;
+        });
     });
 
     toast.appendChild(messageSpan);

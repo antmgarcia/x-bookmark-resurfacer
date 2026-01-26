@@ -1,5 +1,5 @@
 /**
- * X Bookmark Resurfacer - Popup Script (v1.1.2)
+ * X Bookmark Resurfacer - Popup Script (v1.1.3)
  * Controls the extension popup UI with interval display, settings, and manual trigger
  */
 

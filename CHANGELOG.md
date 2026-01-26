@@ -2,6 +2,17 @@
 
 All notable changes to X Bookmark Resurfacer will be documented in this file.
 
+## [1.1.3] - 2026-01-26
+
+### Fixed
+- Fixed persistent resurfaced post reappearing on every page load (`pendingResurfaceBookmark` not cleared after injection)
+- Fixed reload button on sync toast not triggering page reload (`.finally()` pattern ensures reload fires)
+- Fixed bookmarks page scroll not loading more bookmarks (changed from single 25000px scroll to incremental 4 × 3000px scrolls with 1.5s delays)
+
+### Technical
+- `INJECT_PENDING_BOOKMARK` handler now clears `pendingResurfaceBookmark` from storage after retrieval
+- Bookmarks page scroll uses incremental approach (4 × 3000px with 1.5s delays) for reliable lazy-load triggering
+
 ## [1.1.2] - 2026-01-22
 
 ### Added
@@ -25,6 +36,7 @@ All notable changes to X Bookmark Resurfacer will be documented in this file.
 - **Unified Toast UI** - All toasts now use consistent blue background (#1d9bf0) with white pill-shaped buttons and hover effects
 - Sync toast only appears on tabs that were open during sync (not new tabs opened after)
 - **Bookmark count shows total** - Sync toast now shows total bookmarks in database, not just batch count
+- **Three-theme support** - Resurfaced post UI (gradient, chip) now adapts to X's Light, Dim (#15202b), and Dark (#000000) themes with distinct styling per mode
 
 ### Fixed
 - Fixed duplicate toast appearing after clicking "Reload" on sync toast
@@ -51,6 +63,7 @@ All notable changes to X Bookmark Resurfacer will be documented in this file.
 - Self-contained `showSyncToast()` function injected into tabs for stale script compatibility
 - `saveBookmarks()` now returns total database count instead of batch count
 - Interval change triggers 3-minute alarm before applying new interval
+- Added `getThemeMode()` function detecting Light/Dim/Dark via `getComputedStyle(document.body).backgroundColor`
 
 ## [1.1.1] - 2026-01-17
 

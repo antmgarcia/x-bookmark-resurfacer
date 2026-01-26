@@ -133,9 +133,12 @@ class PostInjector {
     reloadButton.textContent = 'Reload';
     reloadButton.addEventListener('click', () => {
       // Mark this sync as acknowledged to prevent duplicate toast after reload
-      chrome.storage.local.set({ syncToastAcknowledgedAt: Date.now() }).then(() => {
-        window.location.reload();
-      });
+      chrome.storage.local.set({ syncToastAcknowledgedAt: Date.now() })
+        .catch(() => {})
+        .finally(() => {
+          // Hard reload bypassing cache
+          window.location.href = window.location.href;
+        });
     });
 
     toast.appendChild(messageSpan);
@@ -177,8 +180,17 @@ class PostInjector {
     scrollButton.className = 'resurfacer-toast-button';
     scrollButton.textContent = 'Scroll for more';
     scrollButton.addEventListener('click', () => {
-      window.scrollBy({ top: 25000, behavior: 'smooth' });
       this.hideToast(toast);
+      // Incremental scrolls to trigger X's lazy loading between batches
+      let scrollCount = 0;
+      const maxScrolls = 4;
+      const scrollStep = () => {
+        if (scrollCount >= maxScrolls) return;
+        window.scrollBy({ top: 3000, behavior: 'smooth' });
+        scrollCount++;
+        setTimeout(scrollStep, 1500);
+      };
+      scrollStep();
     });
 
     toast.appendChild(messageSpan);
