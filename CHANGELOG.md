@@ -2,6 +2,56 @@
 
 All notable changes to X Bookmark Resurfacer will be documented in this file.
 
+## [1.1.2] - 2026-01-22
+
+### Added
+- **Sync Notification Toast** - Other X tabs now show a "Bookmarks synced! Reload to start resurfacing." toast when bookmarks are synced from the bookmarks page
+- **Multi-Tab Resurface** - "Resurface Now" button now injects different bookmarks into ALL open X home feed tabs simultaneously
+- **Background Tab Toast Support** - All toasts (sync, resurface, go-to-home) queue for background tabs and appear when user switches to them
+- **"Go to Home" Toast** - When clicking "Resurface Now" from a post-dedicated page, shows "Bookmark resurfaced in your home feed" toast with "Go to Home" button
+- **Pending Bookmark Storage** - Bookmarks are stored for deferred injection when navigating to home feed from post-dedicated pages
+- **"Scroll for more" Toast** - On bookmarks page, shows synced count with button to scroll down and load more bookmarks
+- **Cross-Tab Sync via Scripting API** - Sync notifications work even with stale content scripts after extension reload
+- **Quick Resurface on Interval Change** - Changing interval triggers a 3-minute resurface before new interval applies
+- **CLAUDE.md Documentation** - Project documentation for Claude Code
+- **SCENARIOS.md Documentation** - Comprehensive use cases and edge cases documentation
+
+### Changed
+- "Resurface Now" behavior improved: injects into all home feed tabs instead of just one
+- Toast notifications are now visibility-aware and won't be missed on background tabs
+- Toast duration increased from 5s/8s to 10 seconds for better visibility
+- Pending bookmark injection delay reduced from 3s to 1.5s for faster UX
+- Popup button shows "Waiting in Home" when bookmark is queued for home feed
+- **Unified Toast UI** - All toasts now use consistent blue background (#1d9bf0) with white pill-shaped buttons and hover effects
+- Sync toast only appears on tabs that were open during sync (not new tabs opened after)
+- **Bookmark count shows total** - Sync toast now shows total bookmarks in database, not just batch count
+
+### Fixed
+- Fixed duplicate toast appearing after clicking "Reload" on sync toast
+- Fixed sync toast appearing on new tabs opened after sync completed
+- Fixed bookmark count showing batch size (20) instead of total synced count
+
+### Removed
+- Removed unused "Too soon" error message (dead code)
+- Removed unused `previousUrl` variable (code cleanup)
+
+### Technical
+- Added `scripting` permission for cross-tab toast injection via `chrome.scripting.executeScript`
+- Added `NOTIFY_SYNC`, `SYNC_COMPLETE`, `NOTIFY_NO_HOME_FEED`, and `INJECT_PENDING_BOOKMARK` message types
+- Added visibility change listener to handle background tab notifications
+- Service worker now broadcasts sync events to all open X tabs via scripting API
+- Service worker notifies non-home-feed tabs when manual resurface occurs
+- `resurfaceBookmarks()` now fetches multiple bookmarks when needed for multi-tab injection
+- Added `pendingResurfaceToast` and `pendingGoToHomeToast` flags for deferred toast display
+- Added `isHomeFeed()` helper method for URL detection
+- Added `checkAndInjectPendingBookmark()` for deferred bookmark injection
+- Added `showGoToHomeToast()` and `showScrollForMoreToast()` methods in PostInjector
+- Added `syncToastAcknowledgedAt` storage key to prevent duplicate toasts after reload
+- Added `scriptInitTime` tracking to prevent toasts on tabs opened after sync
+- Self-contained `showSyncToast()` function injected into tabs for stale script compatibility
+- `saveBookmarks()` now returns total database count instead of batch count
+- Interval change triggers 3-minute alarm before applying new interval
+
 ## [1.1.1] - 2026-01-17
 
 ### Added
