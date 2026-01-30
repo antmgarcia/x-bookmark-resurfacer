@@ -52,10 +52,16 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 - **Behavior**: Bookmark injected at top, "Bookmark resurfaced at top" toast with "View" button
 - **View Button**: Smooth scrolls to top of page
 
-### 2.5 No Home Feed Open
+### 2.5 No Home Feed Open (Manual)
 - **Scenario**: User clicks "Resurface Now" but no home feed tab open
 - **Behavior**: Bookmark stored as pending, "Go to Home" toast shown on current X tab
-- **Deferred Injection**: When user navigates to home feed, pending bookmark injected
+- **Deferred Injection**: When user navigates to home feed, pending bookmark injected (1.5s after load)
+
+### 2.6 No Home Feed Open (Alarm-Based)
+- **Scenario**: Alarm fires but user is on a post page (not home feed)
+- **Behavior**: Bookmark stored as pending silently (no toast)
+- **Deferred Injection**: When user navigates to home feed, pending bookmark injected automatically (1.5s after load)
+- **Note**: Unlike manual resurface, no notification is shown to avoid being intrusive
 
 ---
 

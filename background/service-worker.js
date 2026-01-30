@@ -319,33 +319,37 @@ async function resurfaceBookmarks(forceReplace = false) {
     if (homeFeedTabs.length === 0) {
       log('No X/Twitter home feed tabs found');
 
-      // Check if there are other X tabs (post-dedicated pages) to notify
+      // Check if there are other X tabs (post-dedicated pages)
       const otherXTabs = allTabs.filter(tab =>
         tab.id && !tab.discarded && tab.status === 'complete'
       );
 
-      if (otherXTabs.length > 0 && forceReplace) {
-        // User clicked "Resurface Now" but no home feed open
-        // Select a bookmark and store it as pending, then notify other tabs
+      if (otherXTabs.length > 0) {
+        // X tabs exist but not on home feed - store bookmark as pending
+        // It will be injected when user navigates to home feed
         const pendingBookmarks = await storageManager.getRandomBookmarks(1);
 
         if (pendingBookmarks.length > 0) {
           const pendingBookmark = pendingBookmarks[0];
           await chrome.storage.local.set({ pendingResurfaceBookmark: pendingBookmark });
-          log('Stored pending bookmark:', pendingBookmark.id);
+          log('Stored pending bookmark (user not on home feed):', pendingBookmark.id);
 
-          // Notify other X tabs to show "go to home" toast
-          for (const tab of otherXTabs) {
-            try {
-              await chrome.tabs.sendMessage(tab.id, {
-                type: MESSAGE_TYPES.NOTIFY_NO_HOME_FEED
-              });
-            } catch {
-              // Tab might not have content script ready
+          // Only show "go to home" toast for manual resurfaces
+          if (forceReplace) {
+            for (const tab of otherXTabs) {
+              try {
+                await chrome.tabs.sendMessage(tab.id, {
+                  type: MESSAGE_TYPES.NOTIFY_NO_HOME_FEED
+                });
+              } catch {
+                // Tab might not have content script ready
+              }
             }
+            return { injected: false, reason: 'no_home_feed_notified', pendingBookmarkId: pendingBookmark.id };
           }
 
-          return { injected: false, reason: 'no_home_feed_notified', pendingBookmarkId: pendingBookmark.id };
+          // Alarm-based: silently stored, will inject on next home feed visit
+          return { injected: false, reason: 'pending_for_home_feed', pendingBookmarkId: pendingBookmark.id };
         }
       }
 
