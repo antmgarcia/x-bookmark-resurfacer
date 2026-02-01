@@ -2,9 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Current State (v1.1.4)
+
+- **Version**: 1.1.4 (on `main` branch)
+- **Chrome Web Store**: v1.1.3 approved, v1.1.4 pending submission
+- **GitHub**: https://github.com/antmgarcia/x-bookmark-resurfacer
+
+### Recent Session Work (Jan 2026)
+- v1.1.2: Multi-tab sync, cross-tab toasts, three-theme support (Light/Dim/Dark)
+- v1.1.3: Fixed persistent resurfaced post bug, reload button, incremental scroll (4×3000px)
+- v1.1.4: Pending bookmark for alarm-based resurfaces when not on home feed
+
+### Pending Items
+- Promo video for Chrome Web Store (screen recordings + CapCut editing)
+
 ## Project Overview
 
 X Bookmark Resurfacer is a Chrome extension (Manifest V3) that resurfaces bookmarked X/Twitter posts into the user's home feed as reminders. It uses API interception to capture bookmarks and injects styled post cards into the timeline.
+
+**Core Insight**: Bookmarks are where content goes to be forgotten. Instead of expecting users to visit their bookmarks, this extension brings bookmarks to the user, right in the feed where attention already lives.
 
 ## Development
 
@@ -111,3 +127,60 @@ Key chrome.storage.local entries:
 ## Release Process
 
 Zip files for Chrome Web Store are stored in `1. releases/` with naming pattern `XBookmarkResurfacer-v{version}.zip`. Update `manifest.json` version, then create zip excluding `.git`, `node_modules`, and dev files.
+
+### Version Checklist
+When bumping version, update in **4 places**:
+1. `manifest.json` - `"version": "x.x.x"`
+2. `popup/popup.js` - comment header `(vx.x.x)`
+3. `popup/popup.html` - footer `<span>vx.x.x</span>`
+4. `welcome/welcome.html` - footer `v.x.x.x`
+
+### Git Branch Strategy
+- `main` - released/approved versions
+- `feat/v{version}-{description}` - feature branches (merge to main when ready)
+
+## Key Implementation Details
+
+### Theme Detection (X has 3 themes, not 2)
+X uses three distinct themes, detected via `getComputedStyle(document.body).backgroundColor`:
+- **Light**: RGB > 200 → white background
+- **Dim**: RGB ~21,32,43 → `#15202b` (dark blue)
+- **Dark**: RGB < 30 → `#000000` (true black)
+
+CSS-based dark mode selectors (`prefers-color-scheme`, `data-theme`) do NOT work for X. All theme-aware styling must be applied **inline via JavaScript**.
+
+### Pending Bookmark Flow
+When resurface is triggered but user isn't on home feed:
+1. Bookmark stored in `chrome.storage.local` as `pendingResurfaceBookmark`
+2. Manual resurface: shows "Go to Home" toast
+3. Alarm-based resurface: stores silently (no toast)
+4. On navigation to home feed: `checkAndInjectPendingBookmark()` runs after 1.5s
+5. Pending bookmark injected and cleared from storage
+
+### Interval Change Behavior
+When user changes resurface interval in settings:
+1. New interval saved to storage
+2. Alarm reset to **3 minutes** (quick resurface so user doesn't wait out old interval)
+3. After that resurface, new interval takes effect
+
+### Bookmarks Page Scroll
+Single large scrolls don't trigger X's lazy loading reliably. Use incremental scrolling:
+- 4 scrolls × 3000px with 1.5s delays between each
+
+### Reload Button Pattern
+`chrome.storage.local.set()` can fail silently. Always use `.finally()` for critical operations:
+```javascript
+chrome.storage.local.set({ ... })
+  .catch(() => {})
+  .finally(() => {
+    window.location.href = window.location.href;
+  });
+```
+
+## Privacy Justifications (Chrome Web Store)
+
+For `scripting` permission:
+> Required to inject sync notification toasts into other open X/Twitter tabs when bookmarks are synced. This enables cross-tab communication even when content scripts become stale after extension reload.
+
+Single purpose:
+> Resurfaces bookmarked X/Twitter posts into the user's home feed as periodic reminders.
