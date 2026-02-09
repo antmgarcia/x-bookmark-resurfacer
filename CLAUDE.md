@@ -2,10 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current State (v1.1.4)
+## Current State (v1.1.5)
 
-- **Version**: 1.1.4 (on `main` branch)
-- **Chrome Web Store**: v1.1.3 approved, v1.1.4 pending submission
+- **Version**: 1.1.5 (on `main` branch)
+- **Chrome Web Store**: v1.1.3 approved, v1.1.5 pending submission
 - **GitHub**: https://github.com/antmgarcia/x-bookmark-resurfacer
 
 ### Recent Session Work
