@@ -3,7 +3,7 @@
  * Main orchestration script for the extension
  */
 
-log('Content script loading v1.1.4');
+log('Content script loading v1.1.5');
 log('Page URL:', window.location.href);
 
 class BookmarkResurfacerContent {
