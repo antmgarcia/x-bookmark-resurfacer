@@ -268,25 +268,5 @@ class BookmarkFetcher {
   }
 }
 
-// Listen for query ID discovery from interceptor
-window.addEventListener('message', async (event) => {
-  if (event.source !== window) return;
-
-  if (event.data?.type === 'BOOKMARK_QUERY_ID_DISCOVERED') {
-    const queryId = event.data.queryId;
-    if (queryId) {
-      log('Query ID discovered:', queryId);
-      try {
-        await chrome.storage.local.set({
-          bookmarksQueryId: queryId,
-          queryIdTimestamp: Date.now()
-        });
-      } catch (error) {
-        logError('Error saving discovered query ID:', error);
-      }
-    }
-  }
-});
-
 // Export for use in content script
 window.BookmarkFetcher = BookmarkFetcher;

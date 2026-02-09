@@ -11,8 +11,12 @@ import { log, logError } from '../utils/helpers.module.js';
 const MAIN_ALARM = INJECTION_CONFIG.ALARM_NAME;
 const GRACE_ALARM = 'graceResurfaceAlarm';
 
+// Lock for pending bookmark to prevent double-consumption
+let pendingBookmarkLock = false;
+
 // Track initialization state
 let isInitialized = false;
+let initPromise = null;
 
 // Refresh threshold in hours
 const REFRESH_THRESHOLD_HOURS = 24;
@@ -22,13 +26,18 @@ const REFRESH_THRESHOLD_HOURS = 24;
  */
 async function ensureInitialized() {
   if (isInitialized) return;
+  if (initPromise) return initPromise;
 
-  log('Initializing service worker...');
-  await storageManager.ensureReady();
-  await ensureAlarmExists();
-  await updateBadge();
-  isInitialized = true;
-  log('Service worker initialized');
+  initPromise = (async () => {
+    log('Initializing service worker...');
+    await storageManager.ensureReady();
+    await ensureAlarmExists();
+    await updateBadge();
+    isInitialized = true;
+    log('Service worker initialized');
+  })();
+
+  return initPromise;
 }
 
 /**
@@ -179,6 +188,13 @@ async function createResurfaceAlarm(delayMinutes = null) {
     delayInMinutes: delayMinutes
   });
 
+  // Verify alarm was created
+  const verifyAlarm = await chrome.alarms.get(MAIN_ALARM);
+  if (!verifyAlarm) {
+    logError('Alarm creation failed, retrying...');
+    await chrome.alarms.create(MAIN_ALARM, { delayInMinutes: delayMinutes });
+  }
+
   // Store next resurface timestamp for countdown display
   const nextResurfaceTimestamp = Date.now() + (delayMinutes * 60 * 1000);
   await chrome.storage.local.set({ nextResurfaceTimestamp });
@@ -277,10 +293,10 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
         log('Grace period expired, no X tab found. Skipping resurface.');
         await chrome.storage.local.set({ pendingResurface: false });
       }
-
-      // Reset main timer for next cycle
-      await createResurfaceAlarm();
     }
+
+    // Always reset main timer after grace period
+    await createResurfaceAlarm();
   }
 });
 
@@ -456,6 +472,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try {
       switch (message.type) {
         case MESSAGE_TYPES.STORE_BOOKMARKS:
+          if (!Array.isArray(message.bookmarks) || message.bookmarks.some(b => !b || !b.id)) {
+            sendResponse({ success: false, error: 'Invalid bookmarks data' });
+            break;
+          }
           const savedCount = await storageManager.saveBookmarks(message.bookmarks);
           // Update last sync time and clear the dot
           await chrome.storage.local.set({
@@ -548,15 +568,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           break;
 
         case MESSAGE_TYPES.INJECT_PENDING_BOOKMARK:
-          // Check if there's a pending bookmark to inject
-          const { pendingResurfaceBookmark } = await chrome.storage.local.get(['pendingResurfaceBookmark']);
-          if (pendingResurfaceBookmark) {
-            // Clear immediately to prevent re-injection on page reload
-            await chrome.storage.local.remove('pendingResurfaceBookmark');
-            log('Returning and clearing pending bookmark:', pendingResurfaceBookmark.id);
-            sendResponse({ success: true, bookmark: pendingResurfaceBookmark });
-          } else {
-            sendResponse({ success: false, reason: 'no_pending' });
+          if (pendingBookmarkLock) {
+            sendResponse({ success: false, reason: 'locked' });
+            break;
+          }
+          pendingBookmarkLock = true;
+          try {
+            const { pendingResurfaceBookmark } = await chrome.storage.local.get(['pendingResurfaceBookmark']);
+            if (pendingResurfaceBookmark) {
+              await chrome.storage.local.remove('pendingResurfaceBookmark');
+              log('Returning and clearing pending bookmark:', pendingResurfaceBookmark.id);
+              sendResponse({ success: true, bookmark: pendingResurfaceBookmark });
+            } else {
+              sendResponse({ success: false, reason: 'no_pending' });
+            }
+          } finally {
+            pendingBookmarkLock = false;
           }
           break;
 
@@ -657,7 +684,7 @@ globalThis.checkAlarm = async function() {
  */
 function showSyncToast() {
   // Check if toast already exists or is pending
-  if (document.querySelector('.resurfacer-sync-toast') || window._resurfacerSyncToastPending) return;
+  if (document.querySelector('.resurfacer-sync-toast') || document.querySelector('.resurfacer-toast') || window._resurfacerSyncToastPending) return;
 
   function displayToast() {
     // Double-check toast doesn't already exist
@@ -713,8 +740,7 @@ function showSyncToast() {
       chrome.storage.local.set({ syncToastAcknowledgedAt: Date.now() })
         .catch(() => {})
         .finally(() => {
-          // Hard reload bypassing cache
-          window.location.href = window.location.href;
+          window.location.reload();
         });
     });
 

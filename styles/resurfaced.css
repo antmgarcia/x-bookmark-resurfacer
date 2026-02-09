@@ -34,44 +34,6 @@
   flex-shrink: 0;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .bookmark-resurfaced {
-    border-left-color: #1d9bf0 !important;
-    background: linear-gradient(90deg, rgba(29, 155, 240, 0.04) 0%, transparent 40%) !important;
-  }
-
-  .bookmark-resurfaced:hover {
-    background: linear-gradient(90deg, rgba(29, 155, 240, 0.06) 0%, transparent 40%) !important;
-  }
-
-  .bookmark-indicator {
-    background: rgba(29, 155, 240, 0.2);
-    color: #8ecdf8;
-  }
-}
-
-/* X theme attribute support */
-[data-color-mode="dark"] .bookmark-resurfaced,
-[data-theme="dark"] .bookmark-resurfaced,
-html[style*="color-scheme: dark"] .bookmark-resurfaced {
-  border-left-color: #1d9bf0 !important;
-  background: linear-gradient(90deg, rgba(29, 155, 240, 0.04) 0%, transparent 40%) !important;
-}
-
-[data-color-mode="dark"] .bookmark-resurfaced:hover,
-[data-theme="dark"] .bookmark-resurfaced:hover,
-html[style*="color-scheme: dark"] .bookmark-resurfaced:hover {
-  background: linear-gradient(90deg, rgba(29, 155, 240, 0.06) 0%, transparent 40%) !important;
-}
-
-[data-color-mode="dark"] .bookmark-indicator,
-[data-theme="dark"] .bookmark-indicator,
-html[style*="color-scheme: dark"] .bookmark-indicator {
-  background: rgba(29, 155, 240, 0.2);
-  color: #8ecdf8;
-}
-
 /* Entrance animation */
 @keyframes resurfaceSlideIn {
   from {

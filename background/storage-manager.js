@@ -26,6 +26,10 @@ class StorageManager {
 
       request.onsuccess = () => {
         this.db = request.result;
+        this.db.onclose = () => {
+          logError('IndexedDB connection closed unexpectedly, will reconnect on next operation');
+          this.db = null;
+        };
         log('IndexedDB initialized');
         resolve(this.db);
       };
@@ -53,6 +57,7 @@ class StorageManager {
    */
   async ensureReady() {
     if (!this.db) {
+      this.dbReady = this.initDatabase();
       await this.dbReady;
     }
   }
@@ -70,8 +75,16 @@ class StorageManager {
       let savedCount = 0;
 
       bookmarks.forEach((bookmark) => {
-        const request = store.put(bookmark);
-        request.onsuccess = () => savedCount++;
+        // Read existing record first to preserve resurface stats
+        const getRequest = store.get(bookmark.id);
+        getRequest.onsuccess = () => {
+          const existing = getRequest.result;
+          const toSave = existing
+            ? { ...bookmark, last_resurfaced_at: existing.last_resurfaced_at, resurfaced_count: existing.resurfaced_count, bookmark_added_at: existing.bookmark_added_at }
+            : bookmark;
+          const putRequest = store.put(toSave);
+          putRequest.onsuccess = () => savedCount++;
+        };
       });
 
       transaction.oncomplete = async () => {
@@ -134,9 +147,12 @@ class StorageManager {
       return [];
     }
 
-    // Shuffle and select
-    const shuffled = eligible.sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+    // Fisher-Yates shuffle for unbiased randomization
+    for (let i = eligible.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+    }
+    const selected = eligible.slice(0, Math.min(count, eligible.length));
 
     log(`Selected ${selected.length} bookmarks (${eligible.length} eligible, ${allBookmarks.length} total)`);
     return selected;

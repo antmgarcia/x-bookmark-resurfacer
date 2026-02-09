@@ -3,7 +3,7 @@
  * Main orchestration script for the extension
  */
 
-log('Content script loading v1.1.2');
+log('Content script loading v1.1.4');
 log('Page URL:', window.location.href);
 
 class BookmarkResurfacerContent {
@@ -190,8 +190,12 @@ class BookmarkResurfacerContent {
 
     const message = event.data;
 
+    // Validate message structure
+    if (!message || typeof message.type !== 'string') return;
+
     // Handle query ID discovery
     if (message.type === 'BOOKMARK_QUERY_ID_DISCOVERED') {
+      if (typeof message.queryId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(message.queryId)) return;
       log('Query ID discovered:', message.queryId);
       try {
         await chrome.storage.local.set({ bookmarksQueryId: message.queryId });
@@ -207,8 +211,9 @@ class BookmarkResurfacerContent {
 
     // Handle intercepted bookmarks
     if (message.type === 'BOOKMARKS_INTERCEPTED') {
+      if (!message.data || typeof message.data !== 'object') return;
       log('Received intercepted bookmarks data');
-      log('Data structure:', Object.keys(message.data || {}));
+      log('Data structure:', Object.keys(message.data));
 
       const tweets = extractTweetsFromBookmarksResponse(message.data);
       log(`Extracted ${tweets.length} tweets from response`);
@@ -275,13 +280,6 @@ class BookmarkResurfacerContent {
           sendResponse({ success: true, ...result });
           break;
 
-        case 'RESET_SESSION':
-          this.sessionResurfaceCount = 0;
-          this.injectedBookmarks.clear();
-          log('Session reset');
-          sendResponse({ success: true });
-          break;
-
         case MESSAGE_TYPES.SYNC_COMPLETE:
           // Show reload toast if we're not on the bookmarks page (where sync happened)
           if (!this.isBookmarksPage()) {
@@ -338,6 +336,11 @@ class BookmarkResurfacerContent {
    * This prevents the extension from being annoying/intrusive
    */
   setupPersistenceObserver(timeline) {
+    // Clear any existing interval from a previous setup
+    if (this.urlCheckInterval) {
+      clearInterval(this.urlCheckInterval);
+    }
+
     // Listen for URL changes (SPA navigation) - just reset counters, don't re-inject
     let lastUrl = window.location.href;
     this.urlCheckInterval = setInterval(() => {
@@ -587,8 +590,8 @@ class BookmarkResurfacerContent {
       }
     }
 
-    // Check session cap
-    if (this.sessionResurfaceCount >= this.maxResurfacesPerSession) {
+    // Check session cap (skip for manual resurface)
+    if (!forceReplace && this.sessionResurfaceCount >= this.maxResurfacesPerSession) {
       log(`Session cap reached (${this.sessionResurfaceCount}/${this.maxResurfacesPerSession})`);
       return { injected: false, reason: 'session_cap' };
     }

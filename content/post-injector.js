@@ -114,11 +114,13 @@ class PostInjector {
    * Show reload toast notification with "Reload" button
    */
   showReloadToast(message = 'Bookmarks synced! Reload to start resurfacing.') {
-    // Remove any existing toast
+    // Remove any existing toast (including injected sync toasts)
     if (this.activeToast) {
       this.activeToast.remove();
       this.activeToast = null;
     }
+    const existingSyncToast = document.querySelector('.resurfacer-sync-toast');
+    if (existingSyncToast) existingSyncToast.remove();
 
     // Create toast element
     const toast = document.createElement('div');
@@ -136,8 +138,7 @@ class PostInjector {
       chrome.storage.local.set({ syncToastAcknowledgedAt: Date.now() })
         .catch(() => {})
         .finally(() => {
-          // Hard reload bypassing cache
-          window.location.href = window.location.href;
+          window.location.reload();
         });
     });
 
@@ -690,7 +691,6 @@ class PostInjector {
 
     // Create cell - must be a proper block element in document flow
     const cell = document.createElement('div');
-    cell.setAttribute('data-testid', 'cellInnerDiv');
     cell.setAttribute('data-resurfaced-inner', 'true');
 
     // Soft gradient from left (Twitter blue) fading to transparent

@@ -43,6 +43,7 @@ export function formatRelativeTime(timestamp) {
   const now = new Date();
   const seconds = Math.floor((now - date) / 1000);
 
+  if (seconds < 0) return '0s';
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m`;
