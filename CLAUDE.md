@@ -8,10 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Chrome Web Store**: v1.1.3 approved, v1.1.4 pending submission
 - **GitHub**: https://github.com/antmgarcia/x-bookmark-resurfacer
 
-### Recent Session Work (Jan 2026)
-- v1.1.2: Multi-tab sync, cross-tab toasts, three-theme support (Light/Dim/Dark)
-- v1.1.3: Fixed persistent resurfaced post bug, reload button, incremental scroll (4×3000px)
-- v1.1.4: Pending bookmark for alarm-based resurfaces when not on home feed
+### Recent Session Work
+- v1.1.2 (Jan 2026): Multi-tab sync, cross-tab toasts, three-theme support (Light/Dim/Dark)
+- v1.1.3 (Jan 2026): Fixed persistent resurfaced post bug, reload button, incremental scroll (4×3000px)
+- v1.1.4 (Jan-Feb 2026): Pending bookmark for alarm-based resurfaces; comprehensive audit fixing data-loss bug, race conditions, security hardening, and dead code cleanup
 
 ### Pending Items
 - Promo video for Chrome Web Store (screen recordings + CapCut editing)
@@ -49,8 +49,9 @@ The extension maintains two versions of shared code due to Chrome's content scri
 ### Message Flow
 Communication uses `MESSAGE_TYPES` constants for all cross-context messaging:
 - Content scripts ↔ Service worker via `chrome.runtime.sendMessage`
-- Page script ↔ Content script via `window.postMessage`
+- Page script ↔ Content script via `window.postMessage` (validated: type must be string, queryId must match `[a-zA-Z0-9_-]+`, data must be object)
 - Cross-tab toast injection via `chrome.scripting.executeScript` (for stale content scripts)
+- `STORE_BOOKMARKS` validates input is an array with valid `id` fields before writing to IndexedDB
 
 ### Key Components
 
@@ -65,7 +66,9 @@ Communication uses `MESSAGE_TYPES` constants for all cross-context messaging:
 - IndexedDB wrapper for bookmark persistence
 - Tracks resurface stats (count, cooldowns, retirement)
 - Provides eligibility filtering for bookmark selection
+- `saveBookmarks()` preserves existing resurface stats (cooldowns, counts, `bookmark_added_at`) via get-then-put pattern
 - `saveBookmarks()` returns total database count (not batch count) for accurate toast display
+- Handles unexpected IndexedDB connection close with automatic reconnection on next operation
 
 **Content Script** (`content/content-script.js`)
 - Main orchestrator on X pages
@@ -103,7 +106,7 @@ Defined in `TIMING_CONFIG` and `INJECTION_CONFIG`:
 - Default interval: 20 minutes (user configurable: 10min-2hr)
 - Per-bookmark cooldown: 1 hour
 - Max resurface count: 10 per bookmark (then retired)
-- Session limit: 5 resurfaced posts
+- Session limit: 5 resurfaced posts (bypassed by manual "Resurface Now")
 - Interval change: Triggers 3-minute quick resurface, then new interval applies
 
 ### Multi-Tab Support
@@ -129,11 +132,12 @@ Key chrome.storage.local entries:
 Zip files for Chrome Web Store are stored in `1. releases/` with naming pattern `XBookmarkResurfacer-v{version}.zip`. Update `manifest.json` version, then create zip excluding `.git`, `node_modules`, and dev files.
 
 ### Version Checklist
-When bumping version, update in **4 places**:
+When bumping version, update in **5 places**:
 1. `manifest.json` - `"version": "x.x.x"`
 2. `popup/popup.js` - comment header `(vx.x.x)`
 3. `popup/popup.html` - footer `<span>vx.x.x</span>`
 4. `welcome/welcome.html` - footer `v.x.x.x`
+5. `content/content-script.js` - log line `Content script loading vx.x.x`
 
 ### Git Branch Strategy
 - `main` - released/approved versions
@@ -147,7 +151,7 @@ X uses three distinct themes, detected via `getComputedStyle(document.body).back
 - **Dim**: RGB ~21,32,43 → `#15202b` (dark blue)
 - **Dark**: RGB < 30 → `#000000` (true black)
 
-CSS-based dark mode selectors (`prefers-color-scheme`, `data-theme`) do NOT work for X. All theme-aware styling must be applied **inline via JavaScript**.
+CSS-based dark mode selectors (`prefers-color-scheme`, `data-theme`) do NOT work for X. All theme-aware styling must be applied **inline via JavaScript**. The CSS file `resurfaced.css` only contains toast styles and base classes — no dark mode CSS rules.
 
 ### Pending Bookmark Flow
 When resurface is triggered but user isn't on home feed:
@@ -173,7 +177,7 @@ Single large scrolls don't trigger X's lazy loading reliably. Use incremental sc
 chrome.storage.local.set({ ... })
   .catch(() => {})
   .finally(() => {
-    window.location.href = window.location.href;
+    window.location.reload();
   });
 ```
 

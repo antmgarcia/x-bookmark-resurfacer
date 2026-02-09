@@ -7,9 +7,34 @@ All notable changes to X Bookmark Resurfacer will be documented in this file.
 ### Added
 - **Pending Bookmark for Alarm-Based Resurfaces** - When alarm fires but user is on a post page (not home feed), bookmark is stored as pending and injected automatically when user navigates to home feed (1.5s after load)
 
+### Fixed
+- **Critical: Bookmark stats preserved on re-sync** - `saveBookmarks()` now uses get-then-put to preserve `resurfaced_count`, `last_resurfaced_at`, and `bookmark_added_at` when bookmarks are re-synced. Previously, every sync reset all cooldowns and retirement counters to zero.
+- **Grace alarm always recreates main alarm** - Grace period handler now recreates the main resurface alarm regardless of `pendingResurface` state, preventing resurfacing from stopping permanently
+- **Session cap no longer blocks manual resurface** - "Resurface Now" bypasses the 5-post session limit so it always works when clicked
+- **Duplicate toast prevention** - `showSyncToast` (injected via scripting API) now checks for existing content-script toasts, and `showReloadToast` removes leftover sync toasts
+- **Pending bookmark race condition** - Added lock to prevent two tabs from consuming the same pending bookmark simultaneously
+- **Biased shuffle replaced** - `getRandomBookmarks()` now uses Fisher-Yates shuffle instead of `sort(() => Math.random() - 0.5)`
+- **IndexedDB connection recovery** - Added `db.onclose` handler that resets connection; `ensureReady()` re-initializes on next operation
+- **Alarm creation verification** - Alarms are verified after creation with automatic retry on failure
+- **Service worker initialization reentrancy** - `ensureInitialized()` uses a shared promise to prevent duplicate initialization from concurrent events
+- **Interval cleanup guard** - `setupPersistenceObserver` clears existing URL-check interval before creating a new one
+- **Reload uses `window.location.reload()`** - Replaced `window.location.href = window.location.href` with standard reload API
+- **Future timestamp handling** - `formatRelativeTime()` returns `'0s'` for negative values instead of displaying negative numbers
+
+### Security
+- **postMessage validation** - Content script now validates message structure: type must be a string, `queryId` must match `[a-zA-Z0-9_-]+`, and `data` must be a non-null object
+- **STORE_BOOKMARKS input validation** - Service worker rejects bookmark arrays containing items without valid `id` fields
+- **Removed spoofable `data-testid`** - Injected elements no longer set `data-testid="cellInnerDiv"` which could confuse X's own code or other extensions
+
+### Removed
+- Dead `RESET_SESSION` message handler (was never sent by any component)
+- Duplicate query-ID listener in `bookmark-fetcher.js` (already handled by content script)
+- Incorrect CSS dark mode rules (`@media prefers-color-scheme`, `[data-theme]`, `[data-color-mode]`) — all theme styling is applied inline via JavaScript
+
 ### Technical
 - Extended `pendingResurfaceBookmark` logic to alarm-based resurfaces (previously only worked for manual "Resurface Now")
 - Added new return reason `pending_for_home_feed` for silent pending bookmark storage
+- Version checklist now includes 5th location: `content-script.js` log line
 
 ## [1.1.3] - 2026-01-26
 

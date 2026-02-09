@@ -11,7 +11,7 @@ A Chrome extension that automatically resurfaces your X/Twitter bookmarks in you
 - **Toast Notifications**: X-style toasts notify you when bookmarks are synced or resurfaced
 - **Non-Intrusive**: Respects your browsing with cooldowns and session limits
 - **Native Look & Feel**: Resurfaced posts match X's design with a subtle "Resurfaced" indicator
-- **Dark Mode Support**: Automatically adapts to X's light and dark themes
+- **Three-Theme Support**: Automatically adapts to X's Light, Dim, and Dark themes
 - **Notification Dot**: Shows when bookmarks need to be refreshed (after 24 hours)
 
 ## Installation
@@ -64,7 +64,7 @@ The extension works out of the box with sensible defaults. Access settings via t
 | Setting | Default | Options | Description |
 |---------|---------|---------|-------------|
 | Resurface Interval | 20 minutes | 10min, 20min, 30min, 1hr, 2hr | How often bookmarks appear in your feed |
-| Session Limit | 5 posts | - | Max resurfaced posts per browser session |
+| Session Limit | 5 posts | - | Max auto-resurfaced posts per session ("Resurface Now" always works) |
 | Bookmark Cooldown | 1 hour | - | Time before same bookmark can reappear |
 | Refresh Threshold | 24 hours | - | When to show refresh notification dot |
 | Max Resurface Count | 10 times | - | Bookmark retires after being shown 10 times |

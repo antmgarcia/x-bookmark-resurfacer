@@ -14,14 +14,15 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 
 ### 1.2 Scroll for More Bookmarks
 - **Scenario**: User clicks "Scroll for more" on bookmarks page
-- **Behavior**: Page scrolls down 25,000px to trigger X's infinite scroll, loading more bookmarks
+- **Behavior**: Page scrolls incrementally (4 × 3000px with 1.5s delays) to trigger X's lazy loading
 - **Batch Size**: X returns ~20 bookmarks per API page
 - **Toast**: Only shows once per page visit (first batch), displays total in database
 
 ### 1.3 Subsequent Syncs
 - **Scenario**: User returns to bookmarks page after initial sync
-- **Behavior**: New bookmarks are added, existing ones updated, toast shows total count
+- **Behavior**: New bookmarks are added, existing ones updated with fresh data, toast shows total count
 - **Deduplication**: Bookmarks are stored by ID, no duplicates
+- **Stats Preserved**: Resurface stats (`resurfaced_count`, `last_resurfaced_at`, `bookmark_added_at`) are preserved on re-sync — cooldowns and retirement counters are never reset
 
 ### 1.4 Auto-Fetch (Background Sync)
 - **Scenario**: User has cached query ID, visits any X page
@@ -70,7 +71,7 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 ### 3.1 Toast Types
 | Toast | Message | Button | Action |
 |-------|---------|--------|--------|
-| Sync (bookmarks page) | "XX bookmarks synced" | "Scroll for more" | Scrolls 25,000px |
+| Sync (bookmarks page) | "XX bookmarks synced" | "Scroll for more" | Scrolls 4×3000px incrementally |
 | Sync (other tabs) | "Bookmarks synced! Reload to start resurfacing." | "Reload" | Reloads page |
 | Resurface | "Bookmark resurfaced at top" | "View" | Scrolls to top |
 | Go to Home | "Bookmark resurfaced in your home feed" | "Go to Home" | Navigates to home |
@@ -90,6 +91,11 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 - **Scenario**: User clicks "Reload" on sync toast, page reloads
 - **Behavior**: `syncToastAcknowledgedAt` stored, prevents showing same toast again
 - **Prevents**: Duplicate "Bookmarks synced" toast after reload
+
+### 3.6 Cross-System Toast Deduplication
+- **Scenario**: Both scripting API (`showSyncToast`) and content script (`showReloadToast`) try to show a toast
+- **Behavior**: Each system checks for the other's toast class (`.resurfacer-sync-toast` vs `.resurfacer-toast`) before showing
+- **Prevents**: Two overlapping toasts from different injection mechanisms
 
 ### 3.5 New Tab Toast Prevention
 - **Scenario**: User syncs bookmarks, then opens NEW X tab
@@ -153,7 +159,8 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 ### 6.2 Session Limit
 - **Limit**: 5 resurfaced posts per browser session
 - **Reset**: On page navigation or browser restart
-- **Purpose**: Prevents feed from being overwhelmed
+- **Bypass**: "Resurface Now" button always works regardless of session count
+- **Purpose**: Prevents feed from being overwhelmed by automatic resurfaces
 
 ### 6.3 Minimum Time Between Resurfaces
 - **Duration**: 3 minutes between any resurfaced posts
@@ -232,10 +239,13 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 - **Behavior**: Re-discovered on next bookmarks page visit
 - **Fallback**: Multiple hardcoded query IDs tried if cached one fails
 
-### 8.7 Dark Mode Detection
-- **Method**: Checks body background color RGB values
-- **Threshold**: R, G, B all < 128 = dark mode
+### 8.7 Theme Detection (3 Themes)
+- **Method**: Checks `getComputedStyle(document.body).backgroundColor` RGB values
+- **Light**: RGB > 200 → white background
+- **Dim**: RGB ~21,32,43 → dark blue (`#15202b`)
+- **Dark**: RGB < 30 → true black (`#000000`)
 - **Fallback**: Defaults to light mode if detection fails
+- **Note**: CSS-based selectors (`prefers-color-scheme`, `data-theme`) do NOT work for X. All styling is applied inline via JavaScript.
 
 ### 8.8 Virtualized Timeline (X's DOM)
 - **Challenge**: X uses virtual scrolling, DOM changes dynamically
@@ -246,6 +256,7 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 - **Scenario**: Alarm fires but no X tab open
 - **Behavior**: 5-minute grace period, resurface queued
 - **Resolution**: If X tab opened during grace, resurface happens; otherwise skipped
+- **Recovery**: Main alarm is always recreated after grace period expires, regardless of whether resurface happened
 
 ### 8.10 Already Visible Resurfaced Post
 - **Scenario**: Alarm fires but resurfaced post already on page
@@ -294,10 +305,34 @@ This document covers all scenarios, use cases, and edge cases handled by the ext
 | `enabled` | Extension on/off state |
 | `totalResurfaced` | Lifetime resurface count |
 | `bookmarkCount` | Total synced bookmarks |
+| `resurfaceCooldownUntil` | Popup button cooldown timestamp |
 
 ---
 
-## 11. Debug Commands
+## 11. Security & Validation
+
+### 11.1 postMessage Validation
+- **Threat**: Any script on x.com can send `window.postMessage` messages
+- **Mitigation**: Content script validates all incoming messages:
+  - `type` must be a string
+  - `queryId` must match `[a-zA-Z0-9_-]+` (rejects injection payloads)
+  - `data` must be a non-null object
+
+### 11.2 STORE_BOOKMARKS Validation
+- **Threat**: Malformed data written to IndexedDB
+- **Mitigation**: Service worker rejects bookmarks arrays where any item is missing an `id` field
+
+### 11.3 Pending Bookmark Lock
+- **Threat**: Two tabs simultaneously consuming the same pending bookmark
+- **Mitigation**: `pendingBookmarkLock` flag in service worker prevents concurrent reads
+
+### 11.4 Injected Element Hygiene
+- **Practice**: Injected elements use custom `data-resurfaced-*` attributes, not X's internal `data-testid` selectors
+- **Prevents**: X's own code or other extensions from misprocessing resurfaced posts
+
+---
+
+## 12. Debug Commands
 
 Run in Service Worker console (`chrome://extensions` > service worker):
 
@@ -310,7 +345,7 @@ checkAlarm()       // Check alarm status and timing
 
 ---
 
-## 12. Permissions Used
+## 13. Permissions Used
 
 | Permission | Purpose |
 |------------|---------|
