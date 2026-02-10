@@ -160,6 +160,38 @@ class PostInjector {
   }
 
   /**
+   * Show info-only toast (no action button)
+   */
+  showInfoToast(message) {
+    // Remove any existing toast
+    if (this.activeToast) {
+      this.activeToast.remove();
+      this.activeToast = null;
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'resurfacer-toast';
+
+    const messageSpan = document.createElement('span');
+    messageSpan.className = 'resurfacer-toast-message';
+    messageSpan.textContent = message;
+
+    toast.appendChild(messageSpan);
+    document.body.appendChild(toast);
+
+    this.activeToast = toast;
+
+    requestAnimationFrame(() => {
+      toast.classList.add('visible');
+    });
+
+    // Shorter auto-dismiss since no action needed
+    setTimeout(() => {
+      this.hideToast(toast);
+    }, 6000);
+  }
+
+  /**
    * Show "scroll for more" toast on bookmarks page
    */
   showScrollForMoreToast(count) {

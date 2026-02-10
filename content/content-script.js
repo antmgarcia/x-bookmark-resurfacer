@@ -3,7 +3,7 @@
  * Main orchestration script for the extension
  */
 
-log('Content script loading v1.1.5');
+log('Content script loading v1.1.6');
 log('Page URL:', window.location.href);
 
 class BookmarkResurfacerContent {
@@ -155,6 +155,15 @@ class BookmarkResurfacerContent {
         });
 
         log('Bookmarks stored successfully');
+
+        // Trigger immediate resurface (matches intercept path behavior)
+        try {
+          await chrome.runtime.sendMessage({
+            type: MESSAGE_TYPES.TRIGGER_RESURFACE
+          });
+        } catch {
+          // Will resurface on next alarm
+        }
       } else {
         log('Auto-fetch returned no bookmarks');
       }
@@ -650,6 +659,12 @@ class BookmarkResurfacerContent {
           }).catch(err => logError('Failed to update resurface stats:', err));
 
           const { totalResurfaced = 0 } = await chrome.storage.local.get(['totalResurfaced']);
+
+          // First-ever resurface: show celebration toast
+          if (totalResurfaced === 0) {
+            this.injector.showInfoToast('Resurfacing active — more will appear as you browse');
+          }
+
           await chrome.storage.local.set({ totalResurfaced: totalResurfaced + 1 });
 
           // Only inject one at a time, wait for next alarm cycle for more

@@ -12,7 +12,7 @@ const STORAGE_CONFIG = {
 
 // Timing configuration for v1.1 customizable intervals
 const TIMING_CONFIG = {
-  DEFAULT_FIRST_INTERVAL_MINUTES: 5,   // First resurface after sync
+  DEFAULT_FIRST_INTERVAL_MINUTES: 10,  // First resurface after sync
   DEFAULT_INTERVAL_MINUTES: 20,         // Subsequent resurfaces
   MIN_INTERVAL_MINUTES: 10,             // Minimum user-selectable
   MAX_INTERVAL_MINUTES: 120,            // Maximum (2 hours)

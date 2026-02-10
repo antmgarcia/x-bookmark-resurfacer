@@ -476,6 +476,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ success: false, error: 'Invalid bookmarks data' });
             break;
           }
+          // Check previous count to detect first-ever sync
+          const previousCount = await storageManager.getBookmarkCount();
           const savedCount = await storageManager.saveBookmarks(message.bookmarks);
           // Update last sync time and clear the dot
           await chrome.storage.local.set({
@@ -483,6 +485,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             bookmarkCount: savedCount
           });
           await updateBadge(); // Clear dot after successful sync
+
+          // First sync: store pending bookmark for immediate resurface on home feed
+          if (previousCount === 0 && savedCount > 0) {
+            log('First sync detected — storing pending bookmark for immediate resurface');
+            const firstBookmarks = await storageManager.getRandomBookmarks(1);
+            if (firstBookmarks.length > 0) {
+              await chrome.storage.local.set({ pendingResurfaceBookmark: firstBookmarks[0] });
+              log('Pending bookmark stored:', firstBookmarks[0].id);
+            }
+            // Reset alarm to 1 minute as safety net (in case user is already on home feed)
+            await createResurfaceAlarm(1);
+          }
+
           sendResponse({ success: true, count: savedCount });
           break;
 
@@ -517,7 +532,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const hasTab = await hasXTabs();
           if (hasTab) {
             const injectionResult = await resurfaceBookmarks(message.forceReplace || false);
-            await chrome.storage.local.set({ isFirstResurface: false });
+            // Only mark first resurface complete for manual triggers from popup
+            // Sync-triggered triggers should preserve the short first interval
+            if (message.forceReplace) {
+              await chrome.storage.local.set({ isFirstResurface: false });
+            }
             await createResurfaceAlarm(); // Reset timer after manual trigger
             sendResponse({ success: true, ...injectionResult });
           } else {

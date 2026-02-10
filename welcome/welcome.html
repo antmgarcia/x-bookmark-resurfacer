@@ -179,6 +179,38 @@
       color: #536471;
       border-top: 1px solid #eff3f4;
     }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .synced-content {
+      padding: 32px;
+      text-align: center;
+    }
+
+    .synced-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+    }
+
+    .synced-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0f1419;
+      margin-bottom: 8px;
+    }
+
+    .synced-message {
+      font-size: 15px;
+      color: #536471;
+      line-height: 1.5;
+    }
+
+    .synced-count {
+      font-weight: 600;
+      color: #1d9bf0;
+    }
   </style>
 </head>
 <body>
@@ -192,12 +224,29 @@
       <div class="header-subtitle">Resurface saved posts in your X Feed</div>
     </div>
 
-    <div class="content">
+    <!-- Setup steps (shown before sync) -->
+    <div class="content" id="setupSteps">
       <div class="step">
         <div class="step-number">1</div>
         <div class="step-content">
-          <div class="step-title">Pin the extension</div>
-          <div class="step-description">Keep easy access to your bookmark stats.</div>
+          <div class="step-title">Sync your bookmarks</div>
+          <div class="step-description">Visit your X bookmarks page once to sync them with the extension.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <div class="step-title">Browse your feed</div>
+          <div class="step-description">Your bookmarked posts will naturally appear in your timeline as gentle reminders.</div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <div class="step-title">Pin for easy access</div>
+          <div class="step-description">Keep the extension handy for stats and settings.</div>
           <div class="pin-instructions">
             <ol>
               <li>Click the puzzle icon <svg class="pin-icon" viewBox="0 0 24 24" fill="#536471"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7s2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg> in your toolbar</li>
@@ -207,33 +256,34 @@
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="step">
-        <div class="step-number">2</div>
-        <div class="step-content">
-          <div class="step-title">Sync your bookmarks</div>
-          <div class="step-description">Visit your X bookmarks page once to sync them with the extension.</div>
-        </div>
-      </div>
-
-      <div class="step">
-        <div class="step-number">3</div>
-        <div class="step-content">
-          <div class="step-title">Browse your feed</div>
-          <div class="step-description">Your bookmarked posts will naturally appear in your timeline as gentle reminders.</div>
-        </div>
+    <!-- Synced state (shown after bookmarks are synced) -->
+    <div class="synced-content hidden" id="syncedScreen">
+      <div class="synced-icon">✨</div>
+      <div class="synced-title">You're All Set!</div>
+      <div class="synced-message">
+        <span class="synced-count" id="syncedCount">0</span> bookmarks synced and ready to resurface.
       </div>
     </div>
 
-    <div class="action-section">
-      <a href="https://x.com/i/bookmarks" class="action-button">
+    <div class="action-section" id="setupAction">
+      <a href="https://x.com/i/bookmarks" target="_blank" class="action-button">
         Go to Bookmarks
       </a>
     </div>
 
+    <div class="action-section hidden" id="syncedAction">
+      <a href="https://x.com/home" class="action-button">
+        Go to Home Feed
+      </a>
+    </div>
+
     <div class="footer">
-      X Bookmark Resurfacer &middot; v1.1.5
+      X Bookmark Resurfacer &middot; v1.1.6
     </div>
   </div>
+
+  <script src="welcome.js"></script>
 </body>
 </html>

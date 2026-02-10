@@ -1,5 +1,5 @@
 /**
- * X Bookmark Resurfacer - Popup Script (v1.1.5)
+ * X Bookmark Resurfacer - Popup Script (v1.1.6)
  * Controls the extension popup UI with interval display, settings, and manual trigger
  */
 
@@ -29,6 +29,11 @@ function initElements() {
     allRetiredScreen: document.getElementById('allRetiredScreen'),
     settingsScreen: document.getElementById('settingsScreen'),
     mainHeader: document.getElementById('mainHeader'),
+
+    // Setup screen elements
+    setupIcon: document.getElementById('setupIcon'),
+    setupTitle: document.getElementById('setupTitle'),
+    setupMessage: document.getElementById('setupMessage'),
 
     // Interval & Buttons
     intervalValue: document.getElementById('intervalValue'),
@@ -515,7 +520,17 @@ async function initPopup() {
 
   // Determine which screen to show
   if (!hasSynced || needsRefresh) {
-    // Never synced or sync is stale - show setup
+    // Customize setup screen copy based on context
+    if (!hasSynced) {
+      // New install
+      elements.setupTitle.textContent = "Let's get started";
+      elements.setupMessage.textContent = 'Visit your X bookmarks page to sync. Your saved posts will start resurfacing in your feed.';
+    } else {
+      // Stale sync
+      elements.setupIcon.textContent = '🔄';
+      elements.setupTitle.textContent = 'Time to re-sync';
+      elements.setupMessage.textContent = 'Visit your bookmarks page to refresh your synced posts.';
+    }
     showScreen('setup');
   } else if (bookmarkCount === 0) {
     // Synced recently but user has no bookmarks on X
