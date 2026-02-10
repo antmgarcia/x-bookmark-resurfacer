@@ -2,10 +2,7 @@
 
 All notable changes to X Bookmark Resurfacer will be documented in this file.
 
-## [1.1.4] - 2026-01-27
-
-### Added
-- **Pending Bookmark for Alarm-Based Resurfaces** - When alarm fires but user is on a post page (not home feed), bookmark is stored as pending and injected automatically when user navigates to home feed (1.5s after load)
+## [1.1.5] - 2026-02-09
 
 ### Fixed
 - **Critical: Bookmark stats preserved on re-sync** - `saveBookmarks()` now uses get-then-put to preserve `resurfaced_count`, `last_resurfaced_at`, and `bookmark_added_at` when bookmarks are re-synced. Previously, every sync reset all cooldowns and retirement counters to zero.
@@ -31,10 +28,14 @@ All notable changes to X Bookmark Resurfacer will be documented in this file.
 - Duplicate query-ID listener in `bookmark-fetcher.js` (already handled by content script)
 - Incorrect CSS dark mode rules (`@media prefers-color-scheme`, `[data-theme]`, `[data-color-mode]`) — all theme styling is applied inline via JavaScript
 
+## [1.1.4] - 2026-01-27
+
+### Added
+- **Pending Bookmark for Alarm-Based Resurfaces** - When alarm fires but user is on a post page (not home feed), bookmark is stored as pending and injected automatically when user navigates to home feed (1.5s after load)
+
 ### Technical
 - Extended `pendingResurfaceBookmark` logic to alarm-based resurfaces (previously only worked for manual "Resurface Now")
 - Added new return reason `pending_for_home_feed` for silent pending bookmark storage
-- Version checklist now includes 5th location: `content-script.js` log line
 
 ## [1.1.3] - 2026-01-26
 
