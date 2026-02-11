@@ -527,7 +527,7 @@ async function initPopup() {
       elements.setupMessage.textContent = 'Visit your X bookmarks page to sync. Your saved posts will start resurfacing in your feed.';
     } else {
       // Stale sync
-      elements.setupIcon.textContent = '🔄';
+      elements.setupIcon.textContent = '🔖';
       elements.setupTitle.textContent = 'Time to re-sync';
       elements.setupMessage.textContent = 'Visit your bookmarks page to refresh your synced posts.';
     }
