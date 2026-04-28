@@ -2,7 +2,7 @@
 
 All notable changes to X Bookmark Resurfacer will be documented in this file.
 
-## [1.1.6] - 2026-04-28
+## [1.1.7] - 2026-04-28
 
 ### Added
 - **Dismiss button on resurfaced posts** - A close (×) button in the top-right corner of each resurfaced card. Clicking it animates the card away and quarantines that bookmark for 72 hours so it won't be reselected during that window.
