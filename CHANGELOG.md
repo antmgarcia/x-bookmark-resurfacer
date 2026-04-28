@@ -2,6 +2,17 @@
 
 All notable changes to X Bookmark Resurfacer will be documented in this file.
 
+## [1.1.6] - 2026-04-28
+
+### Added
+- **Dismiss button on resurfaced posts** - A close (×) button in the top-right corner of each resurfaced card. Clicking it animates the card away and quarantines that bookmark for 72 hours so it won't be reselected during that window.
+- **Quarantine eligibility filter** - `getRandomBookmarks()` and `getBookmarkAvailability()` now skip bookmarks whose `quarantined_until` is in the future. Availability stats include a new `quarantinedCount` field.
+
+### Technical
+- New `DISMISS_BOOKMARK` message type and service-worker handler that calls `storageManager.quarantineBookmark(id, hours)`.
+- `INJECTION_CONFIG.QUARANTINE_DURATION_HOURS` (default: 72) controls how long a dismissed bookmark stays out of rotation.
+- `saveBookmarks()` preserves `quarantined_until` and `dismissed_count` across re-syncs (same get-then-put pattern as the existing stats).
+
 ## [1.1.5] - 2026-02-09
 
 ### Fixed

@@ -29,6 +29,7 @@ const INJECTION_CONFIG = {
   MIN_TIME_BETWEEN_RESURFACES_HOURS: 1, // 1 hour cooldown per bookmark
   MAX_RESURFACE_COUNT: 10,         // Can resurface same bookmark up to 10 times
   MAX_RESURFACES_PER_SESSION: 5,   // Up to 5 per browser session
+  QUARANTINE_DURATION_HOURS: 72,   // Dismissed bookmarks excluded from rotation for 72h
   INSERTION_POSITION_MIN: 8,
   INSERTION_POSITION_MAX: 10,
   INSERTION_GAP: 25
@@ -63,7 +64,9 @@ const MESSAGE_TYPES = {
   NOTIFY_SYNC: 'NOTIFY_SYNC',
   SYNC_COMPLETE: 'SYNC_COMPLETE',
   NOTIFY_NO_HOME_FEED: 'NOTIFY_NO_HOME_FEED',
-  INJECT_PENDING_BOOKMARK: 'INJECT_PENDING_BOOKMARK'
+  INJECT_PENDING_BOOKMARK: 'INJECT_PENDING_BOOKMARK',
+  // v1.1.6 additions
+  DISMISS_BOOKMARK: 'DISMISS_BOOKMARK'
 };
 
 // DOM selectors for X/Twitter

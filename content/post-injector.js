@@ -444,10 +444,11 @@ class PostInjector {
     bookmarkCell.setAttribute('data-resurfaced-cell', 'true');
     bookmarkCell.setAttribute('data-bookmark-id', bookmark.id);
 
-    // Style to appear properly - use static positioning to flow in document
+    // Style to appear properly - relative positioning preserves document flow
+    // and provides positioning context for the absolutely-positioned dismiss button
     const borderColor = this.isDarkMode() ? '#2f3336' : '#eff3f4';
     bookmarkCell.style.cssText += `
-      position: static !important;
+      position: relative !important;
       display: block !important;
       transform: none !important;
       z-index: 1 !important;
@@ -845,6 +846,10 @@ class PostInjector {
 
     cell.appendChild(mainContainer);
 
+    // Dismiss (×) button — quarantines the bookmark and removes the cell
+    const dismissButton = this.createDismissButton(bookmark.id, cell, secondaryColor, isDark);
+    cell.appendChild(dismissButton);
+
     // Click handler - open in same tab like native X behavior
     cell.addEventListener('click', (e) => {
       if (e.target.closest('[role="button"]')) return;
@@ -852,6 +857,92 @@ class PostInjector {
     });
 
     return cell;
+  }
+
+  /**
+   * Create dismiss button that quarantines the bookmark and collapses the cell.
+   */
+  createDismissButton(bookmarkId, cell, secondaryColor, isDark) {
+    const button = document.createElement('div');
+    button.setAttribute('role', 'button');
+    button.setAttribute('aria-label', 'Dismiss this resurfaced post');
+    button.setAttribute('tabindex', '0');
+    button.setAttribute('data-resurfacer-dismiss', 'true');
+
+    const hoverBg = isDark ? 'rgba(239, 243, 244, 0.1)' : 'rgba(15, 20, 25, 0.1)';
+    button.style.cssText = `
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      cursor: pointer;
+      color: ${secondaryColor};
+      transition: background-color 0.15s ease, color 0.15s ease;
+      z-index: 2;
+    `;
+
+    // SVG × icon — matches X's iconography style
+    button.innerHTML = `
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+        <path d="M10.59 12 4.54 5.96l1.42-1.42L12 10.59l6.04-6.05 1.42 1.42L13.41 12l6.05 6.04-1.42 1.42L12 13.41l-6.04 6.05-1.42-1.42L10.59 12z"/>
+      </svg>
+    `;
+
+    button.addEventListener('mouseenter', () => {
+      button.style.backgroundColor = hoverBg;
+      button.style.color = '#1d9bf0';
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.backgroundColor = 'transparent';
+      button.style.color = secondaryColor;
+    });
+
+    const dismiss = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      this.dismissCell(bookmarkId, cell);
+    };
+
+    button.addEventListener('click', dismiss);
+    button.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') dismiss(e);
+    });
+
+    return button;
+  }
+
+  /**
+   * Animate cell collapse, then remove from DOM. Quarantine in storage in parallel.
+   */
+  dismissCell(bookmarkId, cell) {
+    // Fire-and-forget — don't block UI on storage write
+    chrome.runtime.sendMessage({
+      type: MESSAGE_TYPES.DISMISS_BOOKMARK,
+      bookmarkId
+    }).catch((err) => logError('Dismiss message failed:', err));
+
+    const startHeight = cell.getBoundingClientRect().height;
+    cell.style.setProperty('max-height', `${startHeight}px`, 'important');
+    cell.style.setProperty('overflow', 'hidden', 'important');
+    cell.style.setProperty('transition', 'max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease, border-width 0.25s ease', 'important');
+
+    requestAnimationFrame(() => {
+      cell.style.setProperty('max-height', '0px', 'important');
+      cell.style.setProperty('opacity', '0', 'important');
+      cell.style.setProperty('padding-top', '0', 'important');
+      cell.style.setProperty('padding-bottom', '0', 'important');
+      cell.style.setProperty('border-bottom-width', '0', 'important');
+      cell.style.setProperty('min-height', '0', 'important');
+    });
+
+    setTimeout(() => {
+      cell.remove();
+    }, 280);
   }
 
   /**

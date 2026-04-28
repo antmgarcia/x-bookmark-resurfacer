@@ -80,7 +80,14 @@ class StorageManager {
         getRequest.onsuccess = () => {
           const existing = getRequest.result;
           const toSave = existing
-            ? { ...bookmark, last_resurfaced_at: existing.last_resurfaced_at, resurfaced_count: existing.resurfaced_count, bookmark_added_at: existing.bookmark_added_at }
+            ? {
+                ...bookmark,
+                last_resurfaced_at: existing.last_resurfaced_at,
+                resurfaced_count: existing.resurfaced_count,
+                bookmark_added_at: existing.bookmark_added_at,
+                quarantined_until: existing.quarantined_until,
+                dismissed_count: existing.dismissed_count
+              }
             : bookmark;
           const putRequest = store.put(toSave);
           putRequest.onsuccess = () => savedCount++;
@@ -129,10 +136,16 @@ class StorageManager {
 
     const allBookmarks = await this.getAllBookmarks();
 
-    // Filter eligible bookmarks (not in cooldown, not retired)
+    const now = Date.now();
+
+    // Filter eligible bookmarks (not in cooldown, not retired, not quarantined)
     const eligible = allBookmarks.filter((bookmark) => {
       const resurfaceCount = bookmark.resurfaced_count || 0;
       if (resurfaceCount >= INJECTION_CONFIG.MAX_RESURFACE_COUNT) {
+        return false;
+      }
+
+      if (bookmark.quarantined_until && new Date(bookmark.quarantined_until).getTime() > now) {
         return false;
       }
 
@@ -208,6 +221,7 @@ class StorageManager {
     let eligibleCount = 0;
     let inCooldownCount = 0;
     let retiredCount = 0;
+    let quarantinedCount = 0;
     let nextAvailableAt = null;
 
     for (const bookmark of allBookmarks) {
@@ -217,6 +231,18 @@ class StorageManager {
       if (resurfaceCount >= INJECTION_CONFIG.MAX_RESURFACE_COUNT) {
         retiredCount++;
         continue;
+      }
+
+      // Check if quarantined (user dismissed)
+      if (bookmark.quarantined_until) {
+        const quarantineEndsAt = new Date(bookmark.quarantined_until);
+        if (quarantineEndsAt > now) {
+          quarantinedCount++;
+          if (!nextAvailableAt || quarantineEndsAt < nextAvailableAt) {
+            nextAvailableAt = quarantineEndsAt;
+          }
+          continue;
+        }
       }
 
       // Check if in cooldown
@@ -244,8 +270,47 @@ class StorageManager {
       eligibleCount,
       inCooldownCount,
       retiredCount,
+      quarantinedCount,
       nextAvailableAt: nextAvailableAt ? nextAvailableAt.toISOString() : null
     };
+  }
+
+  /**
+   * Quarantine a bookmark — user dismissed it, exclude from rotation for durationHours.
+   */
+  async quarantineBookmark(bookmarkId, durationHours) {
+    await this.ensureReady();
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db.transaction([STORAGE_CONFIG.BOOKMARKS_STORE], 'readwrite');
+      const store = transaction.objectStore(STORAGE_CONFIG.BOOKMARKS_STORE);
+      const getRequest = store.get(bookmarkId);
+
+      getRequest.onsuccess = () => {
+        const bookmark = getRequest.result;
+        if (!bookmark) {
+          return reject(new Error('Bookmark not found'));
+        }
+
+        const quarantineEnd = new Date(Date.now() + durationHours * 60 * 60 * 1000);
+        bookmark.quarantined_until = quarantineEnd.toISOString();
+        bookmark.dismissed_count = (bookmark.dismissed_count || 0) + 1;
+
+        const putRequest = store.put(bookmark);
+
+        putRequest.onsuccess = () => {
+          log(`Quarantined bookmark ${bookmarkId} until ${bookmark.quarantined_until}`);
+          resolve({ quarantined_until: bookmark.quarantined_until });
+        };
+
+        putRequest.onerror = () => {
+          logError('Error quarantining bookmark:', putRequest.error);
+          reject(putRequest.error);
+        };
+      };
+
+      getRequest.onerror = () => reject(getRequest.error);
+    });
   }
 
   /**

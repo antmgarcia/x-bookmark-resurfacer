@@ -511,6 +511,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({ success: true });
           break;
 
+        case MESSAGE_TYPES.DISMISS_BOOKMARK:
+          if (typeof message.bookmarkId !== 'string' || !message.bookmarkId) {
+            sendResponse({ success: false, error: 'Invalid bookmarkId' });
+            break;
+          }
+          try {
+            const result = await storageManager.quarantineBookmark(
+              message.bookmarkId,
+              INJECTION_CONFIG.QUARANTINE_DURATION_HOURS
+            );
+            sendResponse({ success: true, ...result });
+          } catch (err) {
+            sendResponse({ success: false, error: err.message });
+          }
+          break;
+
         case MESSAGE_TYPES.GET_BOOKMARK_COUNT:
           const count = await storageManager.getBookmarkCount();
           sendResponse({ success: true, count });
