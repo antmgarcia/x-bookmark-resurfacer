@@ -2,6 +2,11 @@
 
 All notable changes to X Bookmark Resurfacer will be documented in this file.
 
+## [1.1.8] - 2026-05-11
+
+### Fixed
+- **Resurfaced post font** - Injected post cards were rendering in Times serif because they relied on inheriting `font-family` from X's DOM, which broke after a recent X markup change. Both injection paths in `post-injector.js` now declare the X font stack (`TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`) explicitly on the cell so all child elements inherit it.
+
 ## [1.1.7] - 2026-04-28
 
 ### Added

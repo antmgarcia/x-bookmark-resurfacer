@@ -454,6 +454,7 @@ class PostInjector {
       z-index: 1 !important;
       width: 100% !important;
       margin: 0 !important;
+      font-family: TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     `;
 
     log('Created bookmark cell');
@@ -752,6 +753,7 @@ class PostInjector {
       box-sizing: border-box !important;
       overflow: visible !important;
       z-index: 1 !important;
+      font-family: TwitterChirp, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     `;
     log('Cell styles applied with gradient, bgColor:', bgColor);
 
